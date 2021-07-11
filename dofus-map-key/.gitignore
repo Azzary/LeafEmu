@@ -1,0 +1,11 @@
+.vscode
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+bin
+obj
+debug
+input/*
+output/*
+__old_school__
