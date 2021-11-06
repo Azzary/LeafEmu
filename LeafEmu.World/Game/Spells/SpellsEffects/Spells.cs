@@ -40,7 +40,7 @@ namespace LeafEmu.World.Game.Spells.SpellsEffect
             value = Convert.ToInt32(temArd[0]);
             turns = Convert.ToInt32(temArd[3]);
 
-            jet = temArd.Length > 5 ? temArd[5] : "";
+            jet = temArd.Length > 5 ? temArd[5] : string.Empty;
             if (jet.Length < 4 || !jet.Contains('+'))
             {
                 return;

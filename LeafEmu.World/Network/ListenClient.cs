@@ -30,10 +30,13 @@ namespace LeafEmu.World.Network
             ClientSocket = _ClientSocket;
 
         }
-
-        public void sendDebugMsg(string msg)
+        string colorMessage = "B9121B";
+        public void SendMessageToPlayer(string msg)
         {
-            send($"Im00{msg}");
+            String packet = "cs<font color='#" + colorMessage
+                    + "'>" + msg + "</font>";
+            send(packet);
+            //send($"Im00{msg}");
         }
 
         public void send(string packet)
@@ -59,7 +62,7 @@ namespace LeafEmu.World.Network
 
         public void remove(listenClient prmClient)
         {
-            linkServer.RemoveAccount(account.ID, account.GUID);
+            linkServer.RemoveAccount(account.ID, account.GUID, account.rSecret);
             prmClient.isCo = false;
 
             if (account.character != null && account.character.Map != null)
@@ -73,5 +76,10 @@ namespace LeafEmu.World.Network
             }
         }
 
+        internal void GAME_SEND_Im_PACKET(string str)
+        {
+            string packet = "Im" + str;
+            send(packet);
+        }
     }
 }

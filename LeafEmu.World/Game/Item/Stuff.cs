@@ -7,7 +7,7 @@ namespace LeafEmu.World.Game.Item
     public class Stuff
     {
         public int Position { get; set; }
-        public readonly int UID;
+        public int UID;
         public Item Template { get; set; }
         public int Quantity { get; set; }
         public List<Effect> Effects { get; set; }
@@ -36,29 +36,29 @@ namespace LeafEmu.World.Game.Item
             return stringEffects.ToString().Substring(1);
         }
 
-        public static void RangerItem(ref List<Game.Item.Stuff> inv)
+        public static List<Stuff> RangerItem(List<Stuff> inv)
         {
-            List<Game.Item.Stuff> newInv = new List<Game.Item.Stuff>();
-            List<int> uid = new List<int>();
-            foreach (Game.Item.Stuff item in inv)
+            List<Stuff> newInv = new List<Game.Item.Stuff>();
+            Dictionary<int, bool> uid = new Dictionary<int, bool>();
+            foreach (Stuff item in inv)
             {
-                if (item.Position != -1)
+                if (item.Position != -1 && !uid.ContainsKey(item.UID))
                 {
-                    uid.Add(item.UID);
+                    uid.Add(item.UID, true);
                     newInv.Add(item);
                 }
-                if (!uid.Contains(item.UID))
+                else if (!uid.ContainsKey(item.UID))
                 {
                     int quantity = 0;
                     var temp = inv.FindAll(x => item.Template.ID == x.Template.ID && item.Position == -1 && ItemHaveSameEffect(x, item));
-                    temp.ForEach(x => { uid.Add(x.UID); quantity += x.Quantity; });
+                    temp.ForEach(x => { uid.Add(x.UID, true); quantity += x.Quantity; });
                     newInv.Add(new Stuff(Database.LoadDataBase.GetNewUIDItem(), -1, item.Effects, item.Template, quantity));
                 }
             }
-            inv = newInv;
+            return newInv;
         }
 
-        private static bool ItemHaveSameEffect(Stuff item1, Stuff item2)
+        public static bool ItemHaveSameEffect(Stuff item1, Stuff item2)
         {
             if (item1.Effects.Count != item2.Effects.Count)
             {
@@ -85,14 +85,14 @@ namespace LeafEmu.World.Game.Item
         {
             get
             {
-                string item = "";
+                string item = string.Empty;
                 item += UID.ToString("x");
                 item += "~";
                 item += Template.ID.ToString("x");
                 item += "~";
                 item += Quantity.ToString("x");
                 item += "~";
-                item += Position == -1 ? "" : Position.ToString("x");
+                item += Position == -1 ? string.Empty : Position.ToString("x");
                 item += "~" + StringEffect();
                 return item;
             }
@@ -157,7 +157,7 @@ namespace LeafEmu.World.Game.Item
         }
         private void ParseWeaponInfos(string infos)
         {
-            if (infos != "")
+            if (infos != string.Empty)
             {
                 string[] data = infos.Split(',');
                 this.CostInPa = int.Parse(data[1]);
@@ -168,7 +168,7 @@ namespace LeafEmu.World.Game.Item
         private static Effect ParseLittleEffect(string littleEffect, bool perfect)
         {
             Effect e = new Effect();
-            if (littleEffect != "")
+            if (littleEffect != string.Empty)
             {
                 string[] data = littleEffect.Split('#');
                 if (data[0] != "-1")
@@ -177,21 +177,21 @@ namespace LeafEmu.World.Game.Item
                 }
                 if (data.Length > 1)
                 {
-                    if (data[1] != "")
+                    if (data[1] != string.Empty)
                     {
                         e.Min = Convert.ToInt32(data[1], 16);
                     }
                 }
                 if (data.Length > 2)
                 {
-                    if (data[2] != "")
+                    if (data[2] != string.Empty)
                     {
                         e.Max = Convert.ToInt32(data[2], 16);
                     }
                 }
                 if (data.Length > 4)
                 {
-                    if (data[4] != "")
+                    if (data[4] != string.Empty)
                     {
                         if (data[4].Contains("+"))
                         {

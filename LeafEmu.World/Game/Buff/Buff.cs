@@ -9,7 +9,7 @@ namespace LeafEmu.World.Game.Buff
         public int SpellID { get; }
         public int EffectID { get; }
         private string varEffectName { get; set; }
-        private int jet { get; set; }
+        public int jet { get; set; }
         public int LifeTime { get; set; }
         public Entity.Entity laucher { get; set; }
 
@@ -18,7 +18,7 @@ namespace LeafEmu.World.Game.Buff
         {
             int ActionGA = GetEffectToCaracID(spells.effectID, Boost);
             Boost = ActionGA != spells.effectID ? Math.Abs(Boost) : Boost;
-            string packet = $"GA;{ActionGA};{laucher.ID_InFight};{laucher.ID_InFight},{Boost},2";
+            string packet = $"GA;{ActionGA};{laucher.ID_InFight};{laucher.ID_InFight},{Boost},{spells.turns}";
             string BuffPacket = $"GIE{spells.effectID};{_CharacterTarget.id};{Boost};;;;{spells.turns};{spells.SpellsID}";
             laucher.CurrentFight.SendToAllFight($"{BuffPacket}\0" + packet);
         }
@@ -43,19 +43,19 @@ namespace LeafEmu.World.Game.Buff
         /// <param name="spells"></param>
         /// <param name="jet"></param>
         /// <param name="varName"></param>
-        public static void AddBuff(Entity.Entity laucher, Entity.Entity target, Spells.SpellsEffect.Spells spells, int jet, string varName)
+        public static bool AddBuff(Entity.Entity laucher, Entity.Entity target, Spells.SpellsEffect.Spells spells, int jet, string varName)
         {
             lock (target.Buffs)
             {
                 target.Buffs.Add(new Buff(spells.effectID, spells.effectID, spells.turns + target.CurrentFight.nbTour, varName, jet, laucher));
                 if (!SetValue(varName, jet, target, typeof(Entity.Character)))
                 {
-                    Console.BackgroundColor = ConsoleColor.Red;
                     Logger.Logger.Log(($"[Buff Error] {varName}  " + (new System.Diagnostics.StackTrace()).GetFrame(1).GetMethod().Name));
-                    Console.ForegroundColor = ConsoleColor.White;
+                    return false;
                 }
             }
             SendBoost(laucher, target, spells, jet);
+            return true;
         }
 
         public static void GestionBuff(Entity.Entity target)
@@ -73,9 +73,7 @@ namespace LeafEmu.World.Game.Buff
                     {
                         if (target.Buffs[i].EffectID == (int)enumSpellsEffects.PreventSpellLauch)
                             target.CurrentFight.PreventsSpells.Remove(target.Buffs[i].SpellID);
-
                         SetValue(target.Buffs[i].varEffectName, -target.Buffs[i].jet, target, typeof(Entity.Character));
-
                         target.Buffs.RemoveAt(i);
                         i--;
                     }
@@ -111,7 +109,7 @@ namespace LeafEmu.World.Game.Buff
                     return true;
                 }
             }
-            return true;
+            return false;
         }
 
         private static int GetEffectToCaracID(int BuffEffectID, int effect)

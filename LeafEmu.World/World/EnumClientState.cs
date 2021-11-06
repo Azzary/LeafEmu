@@ -12,5 +12,7 @@
         OnRequestIncarnamStatue = 6,
         OnRequestChallenge = 7,
         OnRequestMountDoor = 8,
+        OnRequestZaapi = 9,
+        OnSwithMove = 10
     }
 }

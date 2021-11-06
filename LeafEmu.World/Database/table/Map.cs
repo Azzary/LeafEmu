@@ -8,14 +8,15 @@ namespace LeafEmu.World.Database.table
     public class Map
     {
         public static Dictionary<int, Game.Map.Map> Maps = new Dictionary<int, Game.Map.Map>();
+        public static List<object[]> Maps2 = new List<object[]>();
 
-        MySqlConnection conn;
+        static MySqlConnection conn;
 
         public Map(MySqlConnection _conn)
         {
             conn = _conn;
             MySqlCommand Create_table = new MySqlCommand(@"
-            CREATE TABLE IF NOT EXISTS `maptemplate`  (
+            CREATE TABLE IF NOT EXISTS `maptemplate` (
             `id` int(11) NOT NULL,
             `CreateTime` varchar(50) NOT NULL,
             `Width` int(2) NOT NULL DEFAULT -1,
@@ -28,15 +29,30 @@ namespace LeafEmu.World.Database.table
             `X` int(3) NOT NULL,
             `Y` int(3) NOT NULL,
             `subArea` int(3) NOT NULL,
-            `nroGrupo` int(2) NOT NULL DEFAULT 5,
+            `numgroup` int(2) NOT NULL DEFAULT 5,
             `maxMobs` int(2) NOT NULL DEFAULT 8,
             `Capaciter` int(5) NOT NULL DEFAULT 0,
             `descripcion` int(5) NOT NULL DEFAULT 0,
             PRIMARY KEY (`id`))", conn);
             Create_table.ExecuteNonQuery();
             get_map();
+            fusion();
             LoadInteractiveDoors();
             EndFightAction();
+        }
+
+        public static void ChangeKey(Network.listenClient prmClient, int mapID)
+        {
+            var map2 = Maps2.Find(x => (int)x[0] == mapID);
+            string r1 = $"UPDATE `maptemplate` SET `DataKey` = '{map2[1]}' WHERE `id` = {map2[0]};";
+            using (MySqlCommand commande2 = new MySqlCommand(r1, conn))
+            {
+                MySqlDataReader Reader2 = commande2.ExecuteReader();
+                Reader2.Close();
+            }
+            Maps[mapID].DataKey = map2[1].ToString();
+            prmClient.SendMessageToPlayer($"Map: {mapID} change key...");
+            Logger.Logger.Log($"Map: {mapID} change key...");
         }
 
         private void EndFightAction()
@@ -66,24 +82,12 @@ namespace LeafEmu.World.Database.table
             }
         }
 
-        private void removeSpells(int id)
-        {
-            string r = "DELETE from characterSpells WHERE" +
-             " characterID='" + id + "';";
-            using (MySqlCommand commande = new MySqlCommand(r, conn))
-            {
-                MySqlDataReader Reader = commande.ExecuteReader();
-                Reader.Close();
-            }
-
-        }
         private void fusion()
         {
-            string r = "SELECT id, places from maps;";
-            List<object[]> Maps2 = new List<object[]>();
+            string r = "SELECT id, DataKey from maptemplate_last;";
 
-            string r1 = "";
-            string r2 = "";
+            string r1 = string.Empty;
+            string r2 = string.Empty;
 
             using (MySqlCommand commande = new MySqlCommand(r, conn))
             {
@@ -100,11 +104,11 @@ namespace LeafEmu.World.Database.table
                     {
                         i++;
                         Util.Turn(i, numRows);
-                        Maps2.Add(new object[2] { (int)dr["id"], dr["places"] });
+                        Maps2.Add(new object[2] { (int)dr["id"], dr["DataKey"] });
                     }
                     Reader.Close();
                 }
-
+                return;
                 int ddi = 0;
 
                 foreach (object[] map2 in Maps2)
@@ -112,49 +116,54 @@ namespace LeafEmu.World.Database.table
                     if (Maps.ContainsKey(Convert.ToInt32(map2[0])))
                     {
                         ddi++;
+                        Util.Turn(ddi, Maps2.Count);
                         Game.Map.Map map = Maps[Convert.ToInt32(map2[0])];
-                        r1 = "DELETE from maptemplate WHERE" +
-                            " Id=" + map.Id + ";";
 
-                        r2 = "INSERT INTO maptemplate SET Id=" + map.Id + "," +
-                        "CreateTime='" + map.CreateTime + "X'," +
-                        "Width=" + map.Width + "," +
-                        "Height=" + map.Height + "," +
-                        "PosFight='" + map2[1].ToString() + "'," +
-                        "DataKey='" + map.DataKey + "'," +
-                        "Data='" + map.Data + "'," +
-                        "cells= ''," +
-                        "mobs='" + map.stringmobs + "'," +
-                        "X=" + map.X + "," +
-                        "Y=" + map.Y + "," +
-                        "subArea=" + map.SubArea + "," +
-                        "nroGrupo=" + map.NbGroups + "," +
-                        "maxMobs=" + map.MaxMobs + "," +
-                        "Capaciter=" + map.Capabilities + "," +
-                        "descripcion= 0 ;";
+                        r1 += $"UPDATE `maptemplate` SET `DataKey` = '{map2[1]}' WHERE `id` = {map2[0]};";
+                        //r1 = "DELETE from maptemplate WHERE" +
+                        //    " Id=" + map.Id + ";";
 
-                        using (MySqlCommand commande2 = new MySqlCommand(r1, conn))
-                        {
-                            MySqlDataReader Reader2 = commande2.ExecuteReader();
-                            Reader2.Close();
-                        }
-                        using (MySqlCommand commande2 = new MySqlCommand(r2, conn))
-                        {
+                        //r2 = "INSERT INTO maptemplate SET Id=" + map.Id + "," +
+                        //"CreateTime='" + map.CreateTime + "X'," +
+                        //"Width=" + map.Width + "," +
+                        //"Height=" + map.Height + "," +
+                        //"PosFight='" + map.PosFight + "'," +
+                        //"DataKey='" + map.DataKey + "'," +
+                        //"Data='" + map.Data + "'," +
+                        //"cells= ''," +
+                        //"mobs='" + map.stringmobs + "'," +
+                        //"X=" + map.X + "," +
+                        //"Y=" + map.Y + "," +
+                        //"subArea=" + map.SubArea + "," +
+                        //"nroGrupo=" + map.NbGroups + "," +
+                        //"maxMobs=" + map.MaxMobs + "," +
+                        //"Capaciter=" + map.Capabilities + "," +
+                        //"descripcion= 0 ;";
 
-                            MySqlDataReader Reader2 = commande2.ExecuteReader();
-                            Reader2.Close();
-                        }
+                        //using (MySqlCommand commande2 = new MySqlCommand(r2, conn))
+                        //{
 
+                        //    MySqlDataReader Reader2 = commande2.ExecuteReader();
+                        //    Reader2.Close();
+                        //}
                     }
+                }
+                using (MySqlCommand commande2 = new MySqlCommand(r1, conn))
+                {
+                    MySqlDataReader Reader2 = commande2.ExecuteReader();
+                    Reader2.Close();
                 }
             }
             Logger.Logger.Log("fini");
         }
         private void get_map()
         {
+    //        string r = "SELECT id, CreateTime, Data, DataKey," +
+    //"mobs, Width, Height, mappos, Capaciter, maxMobs, PosFight, nroGrupo," +
+    //"subArea from maptemplate;";
             string r = "SELECT id, CreateTime, Data, DataKey," +
-                "mobs, Width, Height, X, Y, Capaciter, maxMobs, PosFight, nroGrupo," +
-                "subArea from maptemplate;";
+                "mobs, Width, Height, mappos, fixSize, maxMobs, PosFight, numgroup" +
+                " from maptemplate;";
 
             using (MySqlCommand commande = new MySqlCommand(r, conn))
             {
@@ -171,12 +180,13 @@ namespace LeafEmu.World.Database.table
                     {
                         i++;
                         Util.Turn(i, numRows);
-                        int _MapId = (int)dr["id"];
-
-                        Maps.Add(_MapId, new Game.Map.Map(_MapId, dr["CreateTime"].ToString(), dr["Data"].ToString(), dr["DataKey"].ToString(),
-                            dr["mobs"].ToString()
-                           , dr["Width"].ToString(), dr["Height"].ToString(), dr["X"].ToString(),
-                           dr["Y"].ToString(), dr["Capaciter"].ToString(), dr["subArea"].ToString(), (int)dr["maxMobs"], (string)dr["PosFight"], (int)dr["nroGrupo"]));
+                        int mapId = (int)dr["id"];
+                        string X = dr["mappos"].ToString().Split(',')[0];
+                        string Y = dr["mappos"].ToString().Split(',')[1];
+                        string subar = dr["mappos"].ToString().Split(',')[2];
+                        Maps.Add(mapId, new Game.Map.Map(mapId, dr["CreateTime"].ToString(), dr["Data"].ToString(), dr["DataKey"].ToString(),
+                                                         dr["mobs"].ToString(), dr["Width"].ToString(), dr["Height"].ToString(), X,
+                                                         Y, dr["fixSize"].ToString(), subar, (int)dr["maxMobs"], (string)dr["PosFight"], (int)dr["numgroup"]));
 
                     }
                 }

@@ -11,7 +11,7 @@ namespace LeafEmu.World.Game.Entity.AI
         public static Entity GetNearestFighter(Entity entity)
         {
             if (entity.CurrentFight == null)
-                return entity;
+                return null;
             Entity nearest = null;
             int dist = 1000;
             int timeout = 0;
@@ -51,7 +51,7 @@ namespace LeafEmu.World.Game.Entity.AI
 
             foreach (int aCell in adjaCells)
             {
-                if (currentEntity.CurrentFight.map.Cells[aCell].IsWalkable()
+                if (currentEntity.CurrentFight.map.Cells[aCell].IsWalkable
                     && currentEntity.CurrentFight.AllEntityInFight.Exists(x => !x.FightInfo.isDead && x.FightInfo.FightCell != aCell)
                     && !closedList.Contains(aCell))
                 {
@@ -77,7 +77,7 @@ namespace LeafEmu.World.Game.Entity.AI
             int timeout = 0;
             foreach (int aCell in adjaCells)
             {
-                if (target.CurrentFight.map.Cells[aCell].IsWalkable()
+                if (target.CurrentFight.map.Cells[aCell].IsWalkable
                     && target.CurrentFight.AllEntityInFight.Exists(x => !x.FightInfo.isDead && x.FightInfo.FightCell != aCell)
                     && !closedList.Contains(aCell))
                 {

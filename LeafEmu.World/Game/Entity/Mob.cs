@@ -100,16 +100,16 @@ namespace LeafEmu.World.Game.Entity
 
 
                 //Spells
-                string allSpells = "";
+                string allSpells = string.Empty;
                 if (!_Spells.Equals("||||", StringComparison.InvariantCultureIgnoreCase)
-                        && !_Spells.Equals("", StringComparison.InvariantCultureIgnoreCase)
+                        && !_Spells.Equals(string.Empty, StringComparison.InvariantCultureIgnoreCase)
                         && !_Spells.Equals("-1", StringComparison.InvariantCultureIgnoreCase))
                 {
                     temps = _Spells.Split("|");
                     allSpells = n > temps.Length - 1 ? _Spells.Split("|")[temps.Length - 1] : allSpells = _Spells.Split("|")[n];
 
                     if (allSpells.Equals("-1"))
-                        allSpells = "";
+                        allSpells = string.Empty;
                 }
 
                 if (!allSpells.Equals(string.Empty))
@@ -118,13 +118,13 @@ namespace LeafEmu.World.Game.Entity
 
                     foreach (string str in spells)
                     {
-                        if (str.Equals("")) continue;
+                        if (str.Equals(string.Empty)) continue;
                         String[] spellInfo = str.Split("@");
                         int id, lvl;
                         id = Convert.ToInt32(spellInfo[0]);
                         lvl = Convert.ToInt32(spellInfo[1]);
                         if (id == 0 || lvl == 0 || !Database.table.Spells.SpellsList.ContainsKey(id)) continue;
-                        Temp.Spells.Add(new Spells.SpellsEntity(id, lvl));
+                        Temp.Spells.Add(new Spells.SpellsEntity(id, lvl, 0));
                     }
                 }
                 temps = _pdvs.Split("|");
@@ -156,7 +156,8 @@ namespace LeafEmu.World.Game.Entity
             foreach (var property in actual.GetType().GetProperties())
             {
                 PropertyInfo propertyS = Copy.GetType().GetProperty(property.Name);
-                propertyS.SetValue(Copy, property.GetValue(actual));
+                if (property.CanWrite)
+                    propertyS.SetValue(Copy, property.GetValue(actual));
             }
             Copy.ID_InFight = ID_InFight;
             Copy.Spells = actual.Spells;

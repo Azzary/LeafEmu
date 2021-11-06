@@ -10,6 +10,8 @@ namespace LeafEmu.World.Game.account
         public int statue = 0;
 
         public short Role { get; set; }
+        public string rSecret { get; set; }
+
         public int ID { get; set; }
         public List<Game.Entity.Character> ListCharacter = new List<Game.Entity.Character>();
 
@@ -17,7 +19,7 @@ namespace LeafEmu.World.Game.account
 
         public Game.Entity.Character character;
         public string GUID { get; set; }
-
+        //public List<Social.Friend> ListFriends { get; internal set; }
 
         [PacketAttribute("AT")]
         public void LoginInWorld(Network.listenClient prmClient, string prmPacket)
@@ -40,6 +42,7 @@ namespace LeafEmu.World.Game.account
             }
             prmClient.account.ID = int.Parse(InfoAcc[0]);
             prmClient.account.Role = short.Parse(InfoAcc[2]);
+            prmClient.account.rSecret = InfoAcc[3];
             prmClient.linkServer.addAccount(prmClient.account.ID);
             WorldServer.AddToQueue(prmClient);
 

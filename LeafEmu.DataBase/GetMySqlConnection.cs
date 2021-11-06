@@ -1,6 +1,6 @@
 ﻿using MySql.Data.MySqlClient;
 
-namespace LeafEmu.DataBase
+namespace LeafEmu.StaticDataBase
 {
     public static class GetMySqlConnection
     {

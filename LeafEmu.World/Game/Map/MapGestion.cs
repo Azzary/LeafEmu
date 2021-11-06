@@ -9,10 +9,8 @@ namespace LeafEmu.World.Game.Map
         [PacketAttribute("BD")]
         public void SendMap(Network.listenClient prmClient, string prmPacket)
         {
-            if (prmClient.account.statue != 0)
+            if (prmClient.account.statue == 0)
             {
-
-                prmClient.send(Character.GestionCharacter.createAsPacket(prmClient));
                 prmClient.account.statue = 1;
             }
 
@@ -29,7 +27,6 @@ namespace LeafEmu.World.Game.Map
 
         public static void SetCharacterInMap(Network.listenClient prmClient)
         {
-            prmClient.send("GCK|1");
             Map map = Database.table.Map.Maps[prmClient.account.character.mapID];
             lock (map.CharactersOnMap)
             {
@@ -43,9 +40,9 @@ namespace LeafEmu.World.Game.Map
 
         public static string CreatePacketCharacterGM(Entity.Character character)
         {
-            return $"GM|+{character.cellID};1;-1^0;{character.id};{character.speudo};{character.classe},~;{character.gfxID}^{character.Scale};{character.sexe};" +
-    $"0,0,0,999,0;{character.couleur1.ToString("x")};{character.couleur2.ToString("x")};{character.couleur3.ToString("x")};null,null,null,null,null,1,;0;;;;;8;;0.0;0;" +
-    $"\0{Item.MoveItem.GetItemsPos(character)}";
+            //+367;1;0;2784108;Florde;8;80^100;0;0,0,0,2784110;-1;-1;-1;,,,,;0;;;;;0;;
+
+            return $"GM|+{character.cellID};1;0;{character.id};{character.speudo};{character.classe};{character.gfxID}^{character.Scale};{character.sexe};0,0,0,999;-1;-1;-1;,,,,;0;;;;;0;;\0{Item.MoveItem.GetItemsPos(character)}";
 
         }
 
@@ -56,7 +53,7 @@ namespace LeafEmu.World.Game.Map
                 Map _map = prmClient.account.character.Map;
                 lock (_map)
                 {
-                    string packet2 = "";
+                    string packet2 = string.Empty;
 
                     foreach (var fight in _map.FightInMap)
                     {
@@ -106,20 +103,8 @@ namespace LeafEmu.World.Game.Map
         [PacketAttribute("GI")]
         public void SendPong(Network.listenClient prmClient, string prmPacket)
         {
-
-            if (prmClient.account.character.FightInfo.InFight == 0)
-            {
-                prmClient.send("ÃR");
-                CreateMapPacketInfo(prmClient);
-            }
-            else
-            {
-                prmClient.account.character.FightInfo = new Fight.FightEntityInfo(20);
-                prmClient.account.character.State = EnumClientState.None;
-                //Character.GestionCharacter.createAsPacket(prmClient);
-                CreateMapPacketInfo(prmClient);
-            }
-
+            prmClient.send("BD" + DateTime.UtcNow.Date.ToString("yyyy|MM|dd"));
+            CreateMapPacketInfo(prmClient);
         }
 
         public static string GmPacket(Entity.Entity entity)
@@ -154,7 +139,7 @@ namespace LeafEmu.World.Game.Map
             str.Append((color1.ToString("x"))).Append(";");
             str.Append((color2.ToString("x"))).Append(";");
             str.Append((color3.ToString("x"))).Append(";");
-            str.Append("null,null,null,null,null,1,").Append(";");
+            str.Append(",,,,,1,").Append(";");
             str.Append(entity.Vie).Append(";");
             str.Append(entity.PA).Append(";");
             str.Append(entity.PM).Append(";");

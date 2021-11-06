@@ -1,6 +1,8 @@
 ﻿using LeafEmu.World.Game.Character;
 using LeafEmu.World.Game.Fight;
 using LeafEmu.World.Game.Item;
+using LeafEmu.World.Game.Quest;
+using LeafEmu.World.World;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,53 +12,34 @@ namespace LeafEmu.World.Game.Entity
     public class Character : Entity
     {
         public EnumClientState State { get; set; }
-
+        public Dictionary<int, Quest.QuestPlayer> questList { get; set; }
         public int NewCell { get; set; }
         public List<int> ListCellMove { get; set; }
-
+        public int UseInteractifAtEndOfMove { get; set; }
         public Map.Map Map { get; set; }
-
         public bool newCharac = false;
         public int mapID { get; set; }
         public int MapSpawnPoint { get; set; }
         public int CellSpawnPoint { get; set; }
         public int cellID { get; set; }
         public int subArea { get; set; }
-
+        public List<int> Zaaps;
         public int pods { get; set; }
         public int podsMax { get; set; }
-        public Int64 XP { get; set; }
-        public int kamas { get; set; }
-        public int capital { get; set; }
-        public int PSorts { get; set; }
-
-        public int energie { get; set; }
         public double WaitMoving { get; set; }
-        public int EquipementVie { get; set; }
-        public int EquipementPA { get; set; }
-        public int EquipementPM { get; set; }
-        public int EquipementIntell { get; set; }
-        public int EquipementForce { get; set; }
-        public int EquipementSagesse { get; set; }
-        public int EquipementChance { get; set; }
-        public int EquipementAgi { get; set; }
-        public int EquipementPO { get; set; }
-        public int EquipementDommages { get; set; }
-        public int EquipementDommagesPieges { get; set; }
-        public int EquipementCoupsCritique { get; set; }
-        public int EquipementInitiative { get; set; }
-
-
 
         public Character(int _id, string _speudo, short _level, int _isDead, int _gfxID, int _cellID, int _mapID, int _couleur1, int _couleur2, int _couleur3, int _sexe, byte _classe, int _pods, int _podsMax,
              Int64 _XP, int _kamas, int _capital, int _PSorts, int _vie, int _energie, int _PA, int _PM, int _force, int _sagesse, int _chance, int _agi, int _intell, bool _newCharac, string PointSpawn)
         {
+            questList = new Dictionary<int, Quest.QuestPlayer>();
+            UseInteractifAtEndOfMove = -1;
             int[] infoSpawn = Array.ConvertAll(PointSpawn.Split(','), int.Parse);
             MapSpawnPoint = infoSpawn[0];
             CellSpawnPoint = infoSpawn[1];
             IsHuman = true;
-            Invertaire = new Inventaire.Inventaire();
+            Inventaire = new Inventaire.Inventaire();
             ListCellMove = new List<int>();
+            Zaaps = new List<int>();
             FightInfo = new FightEntityInfo(20);
             State = EnumClientState.None;
             NewCell = -1;
@@ -92,9 +75,23 @@ namespace LeafEmu.World.Game.Entity
             UpdateStat();
         }
 
+        internal QuestPlayer getQuestPersoByQuestId(int questId)
+        {
+            return questList.Values.ToList().Find(x => x.quest.id == questId);
+        }
+
+        public void ChangeCell(int newCell)
+        {
+            if (FightInfo.InFight == 0)
+                cellID = newCell;
+            else
+                FightInfo.FightCell = newCell;
+        }
+
         public void AddSpells(int id, int level = 1)
         {
-            Spells.Add(new Spells.SpellsEntity(id, level));
+            Spells.Add(new Spells.SpellsEntity(id, level, Game.Spells.SpellsManagement.GetNextPosDispo(this)));
+
         }
 
         public void AddXp(Int64 XpToAdd, Network.listenClient PrmClient)
@@ -123,8 +120,19 @@ namespace LeafEmu.World.Game.Entity
                 PSorts += level - LastLvl;
                 UpdateStat();
                 Vie = TotalVie = TotalVie + capital;
-                PrmClient.send(GestionCharacter.createAsPacket(PrmClient));
+                PrmClient.send(GestionCharacter.createAsPacket(PrmClient.account.character));
             }
+            PrmClient.GAME_SEND_Im_PACKET("08;" + XpToAdd);
+        }
+
+        internal void teleport(Network.listenClient prmClient, int _mapID, int _cellID)
+        {
+             Game.Map.Mouvement.MapMouvement.SwitchMap(prmClient, _mapID, _cellID);
+        }
+
+        internal object getMetierByID(int id)
+        {
+            return null;
         }
 
         public void UpdateEquipentStats()
@@ -159,20 +167,14 @@ namespace LeafEmu.World.Game.Entity
             F_EquipementResistanceAgi = 0;
 
             List<List<Effect>> stats = new List<List<Effect>>();
-            if (Invertaire.Stuff.Any(x => x.Position == 1))
-                stats.Add(Invertaire.Stuff.First(x => x.Position == 1).Effects);
+            
 
-            if (Invertaire.Stuff.Any(x => x.Position == 6))
-                stats.Add(Invertaire.Stuff.First(x => x.Position == 6).Effects);
-
-            if (Invertaire.Stuff.Any(x => x.Position == 7))
-                stats.Add(Invertaire.Stuff.First(x => x.Position == 7).Effects);
-
-            if (Invertaire.Stuff.Any(x => x.Position == 8))
-                stats.Add(Invertaire.Stuff.First(x => x.Position == 8).Effects);
-
-            if (Invertaire.Stuff.Any(x => x.Position == 15))
-                stats.Add(Invertaire.Stuff.First(x => x.Position == 15).Effects);
+            foreach (var posID in new List<int>() { 1, 6, 7, 8, 15 })
+            {
+                var item = Inventaire.getItemByPos(posID);
+                if (item != null)
+                    stats.Add(item.Effects);
+            }
 
             foreach (List<Effect> effect in stats)
             {
@@ -229,6 +231,11 @@ namespace LeafEmu.World.Game.Entity
             UpdateStat();
         }
 
+        public QuestPlayer getQuestPersoByQuest(Quest.Quest q)
+        {
+            return questList.ContainsKey(q.id) ? questList[q.id] : null;
+        }
+
         public void resCaract()
         {
             if (level > 99)
@@ -265,5 +272,30 @@ namespace LeafEmu.World.Game.Entity
             F_TotalResEau = F_EquipementResistanceEau;
             F_TotalResAgi = F_EquipementResistanceAgi;
         }
+
+        public void addQuestPerso(QuestPlayer qPerso)
+        {
+            questList.Add(qPerso.id, qPerso);
+        }
+
+        internal void SetNewSpawn(int _mapID, int _cellID)
+        {
+            MapSpawnPoint = _mapID;
+            CellSpawnPoint = _cellID;
+        }
+
+        internal bool isGhost => isDead == 0 && energie <= 0;
+
+        public int DialogID { get; set; }
+        public int IdCurrentTalkingNpc { get; set; }
+
+        internal void SetKamas(Network.listenClient prmClient, long kamas)
+        {
+            prmClient.account.character.kamas = kamas;
+            prmClient.send(GestionCharacter.createAsPacket(prmClient.account.character));
+            prmClient.GAME_SEND_Im_PACKET("045;" + kamas);
+        }
     }
+
+
 }

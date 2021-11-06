@@ -10,31 +10,31 @@ namespace LeafEmu.World.Game.Entity.AI
         {
         }
 
-        public override void PlayAI()
+        public async override Task PlayAI()
         {
             try
             {
                 List<int> NextMove = new List<int>();
-                BestSpell();
-                NextMove = MoveNear();
-                Move(NextMove);
-                BestSpell();
+                await BestSpell();
+                await Move(MoveNear()); //timeWait += 
+                await BestSpell();
             }
             catch (Exception)
             {
             }
+            return;
         }
 
-        public void BestSpell()
+        public async Task BestSpell()
         {
             if (FirstTurn)
             {
-                BoostMe();
                 FirstTurn = false;
+                await BoostMe();
             }
             else
             {
-                AttackNeightboor();
+                await AttackNeightboor();
             }
         }
 

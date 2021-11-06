@@ -60,9 +60,14 @@ namespace LeafEmu.World.Game.Spells.SpellsEffects.Effect
 
             if (target.Vie <= 0)
             {
-                packet.Append("\0GA;103;" + target.ID_InFight + ";" + target.ID_InFight);
-                laucher.CurrentFight.SendToAllFight(packet.ToString());
+                packet.Append($"\0GA;103;{laucher.ID_InFight};{target.ID_InFight}");
+                if (target.IsInvocation)
+                {
+                    laucher.CurrentFight.AllEntityInFight.Remove(target);
+                    laucher.CurrentFight.CreateOrderPacketGTL();
+                }
 
+                laucher.CurrentFight.SendToAllFight(packet.ToString() +"\0"+ laucher.CurrentFight.GTLpacket);
                 target.FightInfo.isDead = true;
                 target.FightInfo.FightCell = -100;
                 if (CheckEnd)
@@ -124,35 +129,35 @@ namespace LeafEmu.World.Game.Spells.SpellsEffects.Effect
                 case 96:
                     DmgLife(laucher, TakenDmg(
                                         TotalDmg(jet, laucher.DamagePercent, laucher.Chance, laucher.DamageChance + laucher.Damage + laucher.DamageMagic),
-                                        target.F_TotalResEau + target.ResMagic, target.P_TotalResEau),
+                                        target.F_TotalResEau /*+ target.ResMagic */, target.P_TotalResEau),
                                         target,
                                         IsStilLife);
                     break;
                 case 97:
                     DmgLife(laucher, TakenDmg(
                                         TotalDmg(jet, laucher.DamagePercent, laucher.Force, laucher.DamageForce + laucher.Damage + laucher.DamagePhysic),
-                                        target.F_TotalResForce + target.ResPhysic, target.P_TotalResForce),
+                                        target.F_TotalResForce /*+ target.ResPhysic */, target.P_TotalResForce),
                                         target,
                                         IsStilLife);
                     break;
                 case 98:
                     DmgLife(laucher, TakenDmg(
                                         TotalDmg(jet, laucher.DamagePercent, laucher.Agi, laucher.DamageAgi + laucher.Damage + laucher.DamageMagic),
-                                        target.F_TotalResAgi + target.ResMagic, target.P_TotalResAgi),
+                                        target.F_TotalResAgi /*+ target.ResMagic */, target.P_TotalResAgi),
                                         target,
                                         IsStilLife);
                     break;
                 case 99:
                     DmgLife(laucher, TakenDmg(
                                         TotalDmg(jet, laucher.DamagePercent, laucher.Intell, laucher.DamageIntell + laucher.Damage + laucher.DamageMagic),
-                                        target.F_TotalResIntell + target.ResMagic, target.P_TotalResIntell),
+                                        target.F_TotalResIntell /* + target.ResMagic */, target.P_TotalResIntell),
                                         target,
                                         IsStilLife);
                     break;
                 case 100:
                     DmgLife(laucher, TakenDmg(
                                         TotalDmg(jet, laucher.DamagePercent, 0, laucher.DamageNeutre + laucher.Damage + laucher.DamagePhysic),
-                                        target.F_TotalResNeutre + target.ResPhysic, target.P_TotalResNeutre),
+                                        target.F_TotalResNeutre /*+ target.ResPhysic */, target.P_TotalResNeutre),
                                         target,
                                         IsStilLife);
                     break;

@@ -26,18 +26,17 @@ namespace LeafEmu.World.Network
         {
             byte[] buffer;
             int len;
-            string packets = "";
+            string packets = string.Empty;
             connection.Send(Encoding.ASCII.GetBytes("NS" + World.WorldConfig.ServerID));
             while (true)
             {
-
                 buffer = new byte[connection.ReceiveBufferSize];
                 len = connection.Receive(buffer);
 
                 packets = Encoding.UTF8.GetString(buffer, 0, len);
                 foreach (var item in packets.Split(";"))
                 {
-                    if (item == "")
+                    if (item == string.Empty)
                         break;
                     if (item.Substring(0, 2) == "NC")
                     {
@@ -63,9 +62,9 @@ namespace LeafEmu.World.Network
             catch (Exception) { };
         }
 
-        public void RemoveAccount(int ID, string GUID)
+        public void RemoveAccount(int ID, string GUID, string Rsecrete)
         {
-            ListOfGUID.Remove($"{ID}|{GUID}".Split('|'));
+            ListOfGUID.Remove($"{ID}|{GUID}|{Rsecrete}".Split('|'));
             try
             {
                 connection.Send(Encoding.ASCII.GetBytes($"DC{ID};"));

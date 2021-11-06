@@ -38,7 +38,7 @@ namespace LeafEmu.Auth.Network
                         packets = Encoding.UTF8.GetString(buffer, 0, len);
                         foreach (var item in packets.Split(";"))
                         {
-                            if (item == "")
+                            if (item == string.Empty)
                                 break;
                             if (item.Substring(0, 2) == "NC")
                             {
@@ -61,9 +61,9 @@ namespace LeafEmu.Auth.Network
 
         }
 
-        public void sendConnectionToServer(int ID, string guid, int Role)
+        public void sendConnectionToServer(int ID, string guid, int Role, string rSecret)
         {
-            server.Send(Encoding.ASCII.GetBytes($"NC{ID}|{guid}|{Role};"));
+            server.Send(Encoding.ASCII.GetBytes($"NC{ID}|{guid}|{Role}|{rSecret};"));
 
         }
 

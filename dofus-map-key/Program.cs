@@ -9,6 +9,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text;
 using System.Web;
+using System.Diagnostics;
 
 /*
 
@@ -55,10 +56,10 @@ namespace DofusKeyFinder
         const int MinKeyXor = 32;
         const int MaxKeyXor = 127;
         public static string HEX_CHARS = "0123456789ABCDEF";
-        public static string MapsPath = "../maps";
+        public static string MapsPath = "../Script/maps";
         public static string StatisticsPath = "./statistics.json";
-        public static string InputPath = "./input";
-        public static string OutputPath = "./output";
+        public static string InputPath = "./Script/input";
+        public static string OutputPath = "./Script/output";
 
         public static IEnumerable<Map> LoadMaps()
         {
@@ -76,12 +77,47 @@ namespace DofusKeyFinder
             File.WriteAllText(StatisticsPath, JsonConvert.SerializeObject(statistics, Formatting.Indented));
         }
 
-        public static void Main(String[] args)
+        public static void Main2(String[] args)
         {
+            var path = Directory.GetCurrentDirectory() + "\\Script\\Map.py";
+            Console.WriteLine("Load .swf file to .txt ? Y/N");
+            if (Console.ReadLine().ToLower() == "y")
+            {
+                run_cmd(path, "");
+            }  
+
             var statistics = LoadStatistics();
             //GenerateStatistics();
             //Benchmark(statistics);
             ExportCompute(statistics);
+        }
+
+
+        /// <summary>
+        /// Parse .swf (in Script/swf) file and get dataMap and create .txt file in Script/input.
+        /// for more detail look at Script/Map.py
+        /// </summary>
+        /// <param name="cmd"></param>
+        /// <param name="args"></param>
+        private static void run_cmd(string cmd, string args)
+        {
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.FileName = @"C:\Users\cremi\AppData\Local\Programs\Python\Python39\python.exe";
+            start.Arguments = string.Format("{0} {1}", cmd, args);
+            start.UseShellExecute = false;
+            start.RedirectStandardOutput = true;
+            using (Process process = Process.Start(start))
+            {
+                using (StreamReader reader = process.StandardOutput)
+                {
+                    string result = "";
+                    while (result != null)
+                    {
+                        result = reader.ReadLine();
+                        Console.WriteLine(result);
+                    }
+                }
+            }
         }
 
         public static void GenerateStatistics()
@@ -202,8 +238,9 @@ namespace DofusKeyFinder
         }
 
 
-        public static void Turn(int i, int max)
+        public static void Turn(ref int i, int max)
         {
+            i++;
             Console.Write(i + "/" + max);
             Console.SetCursorPosition(Console.CursorLeft - (i.ToString() + "/" + max).Length, Console.CursorTop);
         }
@@ -221,13 +258,11 @@ namespace DofusKeyFinder
             Directory.CreateDirectory(OutputPath);
             Directory.GetFiles(InputPath, "*")
                 .ToObservable()
-                .Select(path => new { EncodedData = HexToString(File.ReadAllText(path)), Name = Path.GetFileName(path) })
-                .Do(x => i++)
-                .Do(x => Turn(i, len))
-                .Select(x => new { Header = x, KeyLength = ComputeKeyLengthFriedman(statistics, x.EncodedData) })
-                .Select(y => new { Data = y, Key = GuessKey(y.Header.EncodedData, y.KeyLength, statistics) })
-                .Do(z => mapdb.changeKey(Convert.ToInt32(z.Data.Header.Name.Split('_')[0]), z.Data.Header.Name.Split('_')[1].Split('.')[0],
-                FormatKeyExport(z.Key.Value)))//File.WriteAllText(string.Format("{0}/{1}", OutputPath, z.Data.Header.Name + "_key.txt"), FormatKeyExport(z.Key.Value)))
+                .Select(path => JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(path)))
+                .Do(x => Turn(ref i, len))
+                .Select(x => new { Header = x, KeyLength = ComputeKeyLengthFriedman(statistics, x["mapdata"]) })
+                .Select(y => new { Data = y, Key = GuessKey(y.Header["mapdata"], y.KeyLength, statistics) })
+                .Do(z => mapdb.ChangeKey(z.Data.Header, FormatKeyExport(z.Key.Value)))
                 .ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(z =>
                 {
@@ -608,7 +643,7 @@ namespace DofusKeyFinder
 
         public static string FormatKeyExport(string key)
         {
-            return PreEscape(key).Select(c => String.Format("{0:X}", (int)c)).Aggregate("", (acc, c) => acc + c);
+            return PreEscape(key).Select(c => String.Format("{0:X}", (int)c)).Aggregate(string.Empty, (acc, c) => acc + c);
         }
     }
 }

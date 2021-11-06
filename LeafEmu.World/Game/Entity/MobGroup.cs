@@ -18,7 +18,7 @@ namespace LeafEmu.World.Game.Entity
             for (int id = 0; id < Cells.Count; id++)
             {
                 MobCellID = Util.rng.Next(0, Cells.Count);
-                if (Cells[MobCellID].IsWalkable())
+                if (Cells[MobCellID].IsWalkable)
                     break;
             }
             return MobCellID;
@@ -29,7 +29,7 @@ namespace LeafEmu.World.Game.Entity
             List<int[]> mobsIDs = new List<int[]>();
             foreach (var item in groupDate.Split(CharGroupDataSplit))
             {
-                if (item == "")
+                if (item == string.Empty)
                     continue;
                 mobsIDs.Add(Array.ConvertAll(item.Split(','), int.Parse));
             }
@@ -70,7 +70,7 @@ namespace LeafEmu.World.Game.Entity
 
             bool isFirst = true;
             if (Mobs.Count == 0)
-                return "";
+                return string.Empty;
 
             foreach (Mob entry in Mobs)
             {

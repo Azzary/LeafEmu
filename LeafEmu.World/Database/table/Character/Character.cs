@@ -43,7 +43,7 @@ namespace LeafEmu.World.Database.table.Character
                     agi int DEFAULT 0,
                     intell int DEFAULT 0,
                     podsMax int NOT NULL DEFAULT 1000,
-                    PRIMARY KEY (id)) ", conn);
+                    PRIMARY KEY (id));", conn);
             Create_table.ExecuteNonQuery();
         }
 
@@ -120,7 +120,7 @@ namespace LeafEmu.World.Database.table.Character
                                (int)Reader["couleur2"], (int)Reader["couleur3"], (int)Reader["sexe"], Convert.ToByte((int)Reader["classe"]), (int)Reader["pods"], (int)Reader["podsMax"],
                                (Int64)Reader["XP"], (int)Reader["kamas"], (int)Reader["capital"], (int)Reader["PSorts"], (int)Reader["vie"], (int)Reader["energie"], (int)Reader["PA"],
                                (int)Reader["PM"], (int)Reader["forcee"], (int)Reader["sagesse"], (int)Reader["chance"], (int)Reader["agi"], (int)Reader["intell"], false, Reader["SpawnPoint"].ToString());
-
+                            
                             prmClient.account.ListCharacter.Add(character);
                         }
 
@@ -130,6 +130,8 @@ namespace LeafEmu.World.Database.table.Character
                 Reader.Close();
                 prmClient.database.tableCharacterSpells.LoadSpells(prmClient);
                 prmClient.database.tableCharacterItems.LoadItems(prmClient);
+                Zaap.LoadZaapsCharacter(prmClient);
+                Quest.LoadQuestPlayer(prmClient);
 
             }
         }
@@ -149,15 +151,15 @@ namespace LeafEmu.World.Database.table.Character
 
         private void AddSpells(int id, List<Game.Spells.SpellsEntity> Spells)
         {
-            string r = "";
+            string r = string.Empty;
             foreach (Game.Spells.SpellsEntity item in Spells)
             {
                 r += "INSERT INTO characterSpells SET characterID=" + id + "," +
                 "id=" + item.id + "," +
+                "pos=" + item.pos + "," +
                 "level=" + item.level + ";";
-
             }
-            if (r == "")
+            if (r == string.Empty)
                 return;
 
 
@@ -175,54 +177,26 @@ namespace LeafEmu.World.Database.table.Character
             foreach (Game.Entity.Character item in prmClient.account.ListRemoveCharacter)
             {
                 removeCharacter(item.id.ToString());
+                Zaap.del(item);
                 removeSpells(item.id);
-                removeItems(item.id);
+                Item.items_personnage.removeItems(item.id);
+                Quest.RemoveQuestPlayer(prmClient);
             }
 
             foreach (Game.Entity.Character item in prmClient.account.ListCharacter)
             {
                 removeCharacter(item.id.ToString());
                 removeSpells(item.id);
-                removeItems(item.id);
+                Item.items_personnage.removeItems(item.id);
                 CreateCharacter(prmClient.account.ID, item);
+                Zaap.SetZaapsCharacter(item);
                 AddSpells(item.id, item.Spells);
-                UpdateItems(item.id, item.Invertaire.Stuff);
+                Quest.UpdateQuestPlayer(item);
+                Item.items_personnage.UpdateItems(item.id, item.Inventaire.Stuffs);
             }
         }
 
-        private void removeItems(int id)
-        {
-            string r = "DELETE from items_personnage WHERE" +
-             " personnageid = " + id + ";";
-            using (MySqlCommand commande = new MySqlCommand(r, conn))
-            {
-                MySqlDataReader Reader = commande.ExecuteReader();
-                Reader.Close();
-            }
 
-        }
-
-
-
-        private void UpdateItems(int id, List<Game.Item.Stuff> Inv)
-        {
-            Game.Item.Stuff.RangerItem(ref Inv);
-            string r = "";
-            foreach (var item in Inv)
-            {
-                r += $"INSERT INTO items_personnage SET personnageid= {id}, uid= {item.UID} ,modelid= {item.Template.ID}, stats= '{item.getStatForDb()}', objectif= 0 , price = 0 , position = {item.Position}, quantity = {item.Quantity};";
-            }
-            if (r == "")
-                return;
-
-
-            using (MySqlCommand commande = new MySqlCommand(r, conn))
-            {
-                MySqlDataReader Reader = commande.ExecuteReader();
-                Reader.Close();
-            }
-
-        }
 
         public void removeCharacter(string id)
         {

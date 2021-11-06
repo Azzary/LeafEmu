@@ -8,46 +8,60 @@ namespace DofusKeyFinder
     {
         public static List<mapStruc> allMap = new List<mapStruc>();
         static MySqlConnection conn;
+
+
         public static void databaseChangeValue(mapStruc map)
         {
-            string r1 = "DELETE from maptemplate WHERE" +
-            " Id='" + map.Id + "';";
-
-            string r2 = "INSERT INTO maptemplate SET Id=" + map.Id + "," +
-            "CreateTime='" + map.CreateTime + "'," +
-            "Width=" + map.Width + "," +
-            "Height=" + map.Height + "," +
-            "PosFight='" + map.PosFight + "'," +
-            "DataKey='" + map.DataKey + "'," +
-            "Data='" + map.Data + "'," +
-            "cells= '" + map.cell + "'," +
-            "mobs='" + map.mob + "'," +
-            "X=" + map.X + "," +
-            "Y=" + map.Y + "," +
-            "subArea=" + map.SubArea + "," +
-            "nroGrupo=" + map.NbGroups + "," +
-            "maxMobs=" + map.MaxMobs + "," +
-            "Capaciter=" + map.Capabilities + "," +
-            "descripcion= 0 ;";
-
-            using (MySqlCommand commande = new MySqlCommand(r1, conn))
+            string r1 = $"UPDATE `maptemplate` SET `DataKey` = '{map.DataKey}' WHERE `id` = {map.Id};";
+            using (MySqlCommand commande2 = new MySqlCommand(r1, conn))
             {
-
-                MySqlDataReader Reader = commande.ExecuteReader();
-                Reader.Close();
-            }
-            using (MySqlCommand commande = new MySqlCommand(r2, conn))
-            {
-                MySqlDataReader Reader = commande.ExecuteReader();
-                Reader.Close();
+                MySqlDataReader Reader2 = commande2.ExecuteReader();
+                Reader2.Close();
             }
         }
+
+        public static void databaseCreateMap(Dictionary<string,string> map
+            ,string datakey, string posFight = "|", string mobs =",", int x = 100000, int y = 100000, int subarrea = 100000,
+            int nbgroup = 3, int minsize = 1, int fixesize =-1, int maxsize = 8, string forbidden = "0;0;0;0;0;0;0",
+            int sniffed = 0, int minRespawnTime = 12000, int maxRespawnTime = 30000)
+        {
+            mapStruc.testFonction(map["mapdata"], datakey);
+            return;
+            posFight = posFight == string.Empty ? "|" : posFight;
+            mobs = mobs == string.Empty ? "," : mobs;
+            string dataMap = "";
+            string r1 = "INSERT INTO `maptemplate` " +
+                $"VALUES ({map["id"]}," +
+                $" '{map["dateTime"]}'," +
+                $" {map["width"]}," +
+                $" {map["height"]}," +
+                $" '{posFight}'," +
+                $" '{datakey}'," +
+                $" '{dataMap}'," +
+                $" ''{mobs}" +
+                $" '{x},{y},{subarrea}'," +
+                $" {nbgroup}," +
+                $" {minsize}," +
+                $" {fixesize}," +
+                $" {maxsize}," +
+                $" '{forbidden}'," +
+                $" {sniffed}," +
+                $" {minRespawnTime}," +
+                $" {maxRespawnTime});";
+            using (MySqlCommand commande2 = new MySqlCommand(r1, conn))
+            {
+                MySqlDataReader Reader2 = commande2.ExecuteReader();
+                Reader2.Close();
+            }
+        }
+
+
         public static void loadMap(MySqlConnection _conn)
         {
             conn = _conn;
-            string r = "SELECT Id, CreateTime, Data, DataKey," +
-                "mobs, Width, Height, X, Y, Capaciter, cells, maxMobs, PosFight, nroGrupo," +
-                "subArea from maptemplate_copy1;";
+            string r = "SELECT id, CreateTime, Data, DataKey," +
+                "mobs, Width, Height, mappos, fixSize, maxMobs, PosFight, numgroup" +
+                " from maptemplate;";
 
             using (MySqlCommand commande = new MySqlCommand(r, conn))
             {
@@ -62,28 +76,34 @@ namespace DofusKeyFinder
 
                     foreach (DataRow dr in dt.Rows)
                     {
-                        i++;
-                        allMap.Add(new mapStruc(dr["Id"].ToString(), dr["CreateTime"].ToString(), dr["Data"].ToString(), dr["DataKey"].ToString(),
-                           dr["mobs"].ToString(), dr["Width"].ToString(), dr["Height"].ToString(), dr["X"].ToString(),
-                           dr["Y"].ToString(), dr["Capaciter"].ToString(), dr["subArea"].ToString(), (int)dr["maxMobs"], (string)dr["PosFight"], (int)dr["nroGrupo"], (string)dr["PosFight"]));
+                        int mapId = (int)dr["id"];
+                        string X = dr["mappos"].ToString().Split(',')[0];
+                        string Y = dr["mappos"].ToString().Split(',')[1];
+                        string subar = dr["mappos"].ToString().Split(',')[2];
+
+                        allMap.Add(new mapStruc(mapId, dr["CreateTime"].ToString(), dr["Data"].ToString(), dr["DataKey"].ToString(),
+                                        dr["mobs"].ToString(), dr["Width"].ToString(), dr["Height"].ToString(), X,
+                                        Y, dr["fixSize"].ToString(), subar, (int)dr["maxMobs"], (string)dr["PosFight"], (int)dr["numgroup"]));
                     }
                 }
                 Reader.Close();
             }
         }
 
-        public static void changeKey(int id, string dateTime, string key)
+        public static void ChangeKey(Dictionary<string,string> data, string key)
         {
-            var res = allMap.Find(x => x.Id == id);
+            var res = allMap.Find(x => x.Id == int.Parse(data["id"]));
             if (res != null)
             {
+                return;
                 res.DataKey = key;
-                res.CreateTime = dateTime;
+                res.CreateTime = data["dateTime"];
                 databaseChangeValue(res);
             }
             else
             {
-                Logger.Log("No row for " + id);
+                databaseCreateMap(data, key);
+                Logger.Log("No row for " + data["id"]);
             }
         }
     }

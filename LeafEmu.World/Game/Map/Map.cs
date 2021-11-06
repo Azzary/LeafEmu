@@ -25,18 +25,21 @@ namespace LeafEmu.World.Game.Map
         public List<int[]> mobsIDs { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public string X { get; set; }
+        public int X { get; set; }
         public string stringmobs { get; set; }
-        public string Y { get; set; }
+        public int Y { get; set; }
         public string Capabilities { get; set; }
         public string SubArea { get; set; }
         public int MaxMobs { get; set; }
         public int NbGroups { get; set; }
         public string PosFight { get; set; }
-
+        public bool HaveZaap { get; set; }
+        public bool HaveZaapi { get; set; }
         public Map(int _id, string _createTime, string _data, string _datakey, string _mobs, string _width, string _height,
             string _x, string _y, string _capabilities, string _subAreaId, int _maxMobs, string _PosFight, int _nbGroup)
         {
+            HaveZaap = false;
+            HaveZaapi = false;
             stringmobs = _mobs;
             PosFight = _PosFight;
             CellTp = new Dictionary<int, int[]>();
@@ -48,11 +51,11 @@ namespace LeafEmu.World.Game.Map
             mobsIDs = new List<int[]>();
             Width = int.Parse(_width);
             Height = int.Parse(_height);
-            X = _x;
-            Y = _y;
+            X = Convert.ToInt32(_x);
+            Y = Convert.ToInt32(_y);
             Capabilities = _capabilities;
             SubArea = _subAreaId;
-            MaxMobs = _maxMobs;
+            MaxMobs = Math.Clamp(_maxMobs, 1, 8);
             NbGroups = NbGroups > 3 ? 3 : _nbGroup;
             Cells = new List<Cell.Cell>();
             UncompressDatas(0);
@@ -61,15 +64,15 @@ namespace LeafEmu.World.Game.Map
 
         private void Create_Groupe_monster(string _mobs)
         {
-            if (_mobs == "")
+            if (_mobs == string.Empty)
                 return;
-            if (PosFight == "")
+            if (PosFight == string.Empty)
             {
                 Logger.Logger.Warning($"No pos for map {Id} but need to spawn mobs", 15);
                 return;
             }
-            short size = 8;
-            for (int i = 0; i < NbGroups; i++)
+            short size = (short)MaxMobs;
+            for (int i = 0; i < NbGroups && size >= 0; i++)
             {
                 MobInMap.Add(MobGroup.CreateMobGroupe(i, _mobs, MobGroup.GetRngCellWalkable(Cells), '|', size, false));
                 size = (short)(size - 3);
@@ -93,11 +96,12 @@ namespace LeafEmu.World.Game.Map
             }
         }
 
-        public void SendToAllMap(string packet, bool SendToFight = false)
+        public void SendToAllMap(string packet, bool SendToFight = false, List<listenClient> DontSendTo = null)
         {
+            DontSendTo = DontSendTo == null ? new List<listenClient>() : DontSendTo;
             foreach (var item in CharactersOnMap)
             {
-                if (SendToFight || item.account.character.FightInfo.InFight == 0)
+                if ((SendToFight || item.account.character.FightInfo.InFight == 0) && !DontSendTo.Contains(item))
                     item.send(packet);
             }
         }

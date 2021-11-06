@@ -11,46 +11,64 @@ namespace LeafEmu.World.Game.Character
         [PacketAttribute("AA")]
         public void CreateCharacter(listenClient prmClient, string prmPacket)
         {
-            string[] packet = prmPacket.Substring(2).Split("|");
-            if (packet.Length == 6)
+            //AA Tifehucu|2|0|-1|-1|-1
+            if (prmClient.account.ListCharacter.Count <= 5)
             {
-                int gfxID = int.Parse(packet[1]) * 10;
-                if (packet[2] == "1")
-                {
-                    gfxID++;
+                List<string> infoStr;
+                List<int> infoInt;
+                string name = string.Empty;
+                try
+                { 
+                    infoStr = prmPacket.Substring(2).Split("|").ToList();
+                    name = infoStr[0];
+                    infoStr.RemoveAt(0);
+                    infoInt = infoStr.ConvertAll(x => int.Parse(x));
                 }
-                byte classe = byte.Parse(packet[1]);
-                int[] StartPos = World.WorldConfig.GetPosStart(classe);
-                if (StartPos[1] == 0)
+                catch (Exception)
                 {
-
-                    prmClient.send(send_character(prmClient));
                     return;
                 }
-                Game.Entity.Character character = new Entity.Character(Database.LoadDataBase.GetNewUIDCharacter(), packet[0], 1, 0, gfxID, StartPos[0], StartPos[1], int.Parse(packet[3]),
-                    int.Parse(packet[4]), int.Parse(packet[5]), int.Parse(packet[2]), classe, 0, 1000, 0, 0, 0, 0, 0, 10000, 6, 3, 0, 0, 0, 0, 0, true, $"{StartPos[1]},{StartPos[0]}");
+                if (infoInt.Count < 5 || (infoInt[0] < 1 && infoInt[0] > 12))
+                    return;
+
+                int gfxID = infoInt[0] * 10;
+                gfxID = infoInt[1] == 1 ? gfxID + 1: gfxID;
+                byte classe = (byte)infoInt[0];
+                int[] StartPos = World.WorldConfig.GetPosStart(classe);
+
+                Entity.Character character = new Entity.Character(Database.LoadDataBase.GetNewUIDCharacter(), name, 1, 0, gfxID, StartPos[0], StartPos[1], infoInt[2],
+                    infoInt[3], infoInt[4], infoInt[1], classe, 0, 1000, 0, 0, 0, 0, 0, 10000, 6, 3, 0, 0, 0, 0, 0, true, $"{StartPos[1]},{StartPos[0]}");
                 Spells.SpellsManagement.AddSpells(character);
                 prmClient.account.ListCharacter.Add(character);
+              
             }
-
-            prmClient.send(send_character(prmClient));
+            prmClient.send(Get_Packet_character(prmClient));
+            //Cinema ???
+            prmClient.send("TB");
         }
 
 
         [PacketAttribute("AD")]
-        public void DelCharacter(Network.listenClient prmClient, string prmPacket)
+        public void DelCharacter(listenClient prmClient, string prmPacket)
         {
-            string x = prmPacket.Substring(2).Split("|")[0];
+            string[] infoReck = prmPacket.Substring(2).Split('|');
+            if (infoReck.Length == 0)
+                return;
+            string id = infoReck[0];
             for (int i = 0; i < prmClient.account.ListCharacter.Count; i++)
             {
-                if (x == prmClient.account.ListCharacter[i].id.ToString())
+                if (id == prmClient.account.ListCharacter[i].id.ToString())
                 {
-                    prmClient.account.ListRemoveCharacter.Add(prmClient.account.ListCharacter[i]);
-                    prmClient.account.ListCharacter.RemoveAt(i);
+                    if (prmClient.account.ListCharacter[i].level < 20 
+                    || (infoReck.Length == 2 && prmClient.account.rSecret == infoReck[1]))
+                    {
+                        prmClient.account.ListRemoveCharacter.Add(prmClient.account.ListCharacter[i]);
+                        prmClient.account.ListCharacter.RemoveAt(i);
+                    }
                     break;
                 }
             }
-            prmClient.send(send_character(prmClient));
+            prmClient.send(Get_Packet_character(prmClient));
 
         }
 
@@ -58,95 +76,84 @@ namespace LeafEmu.World.Game.Character
         public void ListCharacter(Network.listenClient prmClient, string prmPacket)
         {
             prmClient.send("Aq1");
-            prmClient.send(send_character(prmClient));
+            prmClient.send(Get_Packet_character(prmClient));
         }
 
 
         [PacketAttribute("GC1")]
         public static void GetInfoCharacter(Network.listenClient prmClient, string prmPacket)
         {
-            prmClient.send($"GCK|1|{prmClient.account.character.speudo}");
+            if (prmClient.account.character.FightInfo.InFight != 2)
+            {
+                MapGestion.SetCharacterInMap(prmClient);
+            }
             //prmClient.send(createAsPacket(prmClient) + "\0ILS2000");
-            Map.MapGestion.SetCharacterInMap(prmClient);
             //Map.MapGestion.CreateMapPacketInfo(prmClient);
         }
 
-        public static string CreateStuffPacketOM(listenClient prmClient)
-        {
-            StringBuilder packet = new StringBuilder("OS+5|");
-            foreach (var item in prmClient.account.character.Invertaire.Stuff)
-            {
-                if (item.Position != -1)
-                {
-                    packet.Append($"{item.Template.ID}|");
-                }
-            }
-            return packet.ToString();
-        }
 
         /// <summary>
         /// Stats Personnage (xp/kamas...)
         /// </summary>
         /// <param name="prmClient"></param>
         /// <returns></returns>
-        public static string createAsPacket(listenClient prmClient)
+        public static string createAsPacket(Entity.Character entity)
         {
-            Game.Entity.Character character = prmClient.account.character;
             StringBuilder packet = new StringBuilder();
-            character.UpdateEquipentStats();
-            packet.Append($"As{character.XP},{Database.table.Experience.ExperienceStat[character.level][0]},{Database.table.Experience.ExperienceStat[character.level + 1][0]}|" +
-                $"{character.kamas}|" +
-                $"{character.capital}|" +
-                $"{character.PSorts}|" +
-                $"0|" +
-                $"{character.Vie},{character.TotalVie}|" +
-                $"{character.energie},10000|" +
-                $"10|" +
-                $"10|" +
-                $"{character.PA},{character.EquipementPA},0,0,{character.TotalPA}|" +
-                $"{character.PM},{character.EquipementPM},0,0,{character.TotalPM}|" +
-                $"{character.CaracForce},{character.EquipementForce},0,{character.TotalForce}|" +
-                $"{character.CaracVie},{character.EquipementVie},0,{character.TotalVie}|" +
-                $"{character.CaracSagesse},{character.EquipementSagesse},0,{character.TotalSagesse}|" +
-                $"{character.CaracChance},{character.EquipementChance},0,{character.TotalChance}|" +
-                $"{character.CaracAgi},{character.EquipementAgi},0,{character.TotalAgi}|" +
-                $"{character.CaracIntell},{character.EquipementIntell},0,{character.TotalIntell}|" +
-                $"{character.PO},0,0,0|" +
+            entity.UpdateEquipentStats();
 
-                $"{character.Damage},0,0,0|" +
-                $"{character.DamagePhysic},0,0,0|" +
-                $"{character.DamageMagic},0,0,0|" +
-                $"{character.DamagePercent},0,0,0|" +
-                $"{character.F_DamagePiege},0,0,0|" +
-                $"{character.P_DamagePiege},0,0,0|" +
-                $"{character.HealBonus},0,0,0|" +
-                $"0,0,0,0|" +//Revoie de dmg
-                $"{character.CC},0,0,0|" +
-                $"{character.EC},0,0,0|" +
-                $"{character.EsquivePA},0,0,0|" +
-                $"{character.EsquivePM},0,0,0|" +
+            packet.Append($"As{entity.XP},{Database.table.Experience.ExperienceStat[entity.level][0]},{Database.table.Experience.ExperienceStat[entity.level + 1][0]}|");
+            packet.Append($"{entity.kamas}|");
+            packet.Append($"{entity.capital}|");
+            packet.Append($"{entity.PSorts}|");
+            packet.Append($"0~0,0,0,0,0,0|");
+            packet.Append($"{entity.Vie},{entity.TotalVie}|");
+            packet.Append($"{entity.energie},10000|");
+            packet.Append($"0|");
+            packet.Append($"100|");
+            packet.Append($"{entity.PA},{entity.EquipementPA},0,0,{entity.TotalPA}|");
+                packet.Append($"{entity.PM},{entity.EquipementPM},0,0,{entity.TotalPM}|");
+            packet.Append($"{entity.CaracForce},{entity.EquipementForce},0,{entity.TotalForce}|");
+            packet.Append($"{entity.CaracVie},{entity.EquipementVie},0,{entity.TotalVie}|");
+            packet.Append($"{entity.CaracSagesse},{entity.EquipementSagesse},0,{entity.TotalSagesse}|");
+            packet.Append($"{entity.CaracChance},{entity.EquipementChance},0,{entity.TotalChance}|");
+            packet.Append($"{entity.CaracAgi},{entity.EquipementAgi},0,{entity.TotalAgi}|");
+            packet.Append($"{entity.CaracIntell},{entity.EquipementIntell},0,{entity.TotalIntell}|");
+            packet.Append($"{entity.PO},0,0,0|");
 
-                $"{character.F_TotalResNeutre},0,0,0|" +
-                $"{character.P_TotalResNeutre},0,0,0|" +
+            packet.Append($"{entity.Damage},0,0,0|");
+            packet.Append($"{entity.DamagePhysic},0,0,0|");
+            packet.Append($"{entity.DamageMagic},0,0,0|");
+            packet.Append($"{entity.DamagePercent},0,0,0|");
+            packet.Append($"{entity.F_DamagePiege},0,0,0|");
+            packet.Append($"{entity.P_DamagePiege},0,0,0|");
+            packet.Append($"{entity.HealBonus},0,0,0|");
+            packet.Append($"0,0,0,0|");//Revoie de dmg
+            packet.Append($"{entity.CC},0,0,0|");
+            packet.Append($"{entity.EC},0,0,0|");
+            packet.Append($"{entity.EsquivePA},0,0,0|");
+            packet.Append($"{entity.EsquivePM},0,0,0|");
 
-                $"{character.F_TotalResForce},0,0,0|" +
-                $"{character.P_TotalResForce},0,0,0|" +
+            packet.Append($"{entity.F_TotalResNeutre},0,0,0|");
+            packet.Append($"{entity.P_TotalResNeutre},0,0,0|");
 
-                $"{character.F_TotalResIntell},0,0,0|" +
-                $"{character.P_TotalResIntell},0,0,0|" +
+            packet.Append($"{entity.F_TotalResForce},0,0,0|");
+            packet.Append($"{entity.P_TotalResForce},0,0,0|");
 
-                $"{character.F_TotalResEau},0,0,0|" +
-                $"{character.P_TotalResEau},0,0,0|" +
+            packet.Append($"{entity.F_TotalResIntell},0,0,0|");
+            packet.Append($"{entity.P_TotalResIntell},0,0,0|");
 
-                $"{character.F_TotalResAgi},0,0,0|" +
-                $"{character.P_TotalResAgi},0,0,0|");
+            packet.Append($"{entity.F_TotalResEau},0,0,0|");
+            packet.Append($"{entity.P_TotalResEau},0,0,0|");
 
+            packet.Append($"{entity.F_TotalResAgi},0,0,0|");
+            packet.Append($"{entity.P_TotalResAgi},0,0,0|");
 
             for (int i = 0; i < 10; i++)
             {
                 packet.Append("0,0,0,0,0|");
             }
-
+            packet.Append("20");
             return packet.ToString();
         }
 
@@ -155,7 +162,8 @@ namespace LeafEmu.World.Game.Character
         {
             if (int.TryParse(prmPacket.Substring(2).Split('\0')[0], out int id))
             {
-                foreach (Game.Entity.Character character in prmClient.account.ListCharacter)
+                prmClient.account.statue = 2;
+                foreach (Entity.Character character in prmClient.account.ListCharacter)
                 {
                     if (id == character.id)
                     {
@@ -163,7 +171,8 @@ namespace LeafEmu.World.Game.Character
                         prmClient.CharacterInWorld.Add(prmClient);
                         prmClient.send("BN");
                         prmClient.send("Rx0");
-                        prmClient.send(CreateASKPacket(character) + "3254786~371~1~~;");
+                        prmClient.account.character.Inventaire.SendInventory(prmClient);
+                        //prmClient.send(CreateASKPacket(character) + "3254786~371~1~~;");
                         prmClient.send("ZS0");
                         prmClient.send("0cC+*#$pi^");
 
@@ -172,7 +181,7 @@ namespace LeafEmu.World.Game.Character
                             ";2|504;2|13;0|62;1|332;0|111;2|209;1|479;2|258;0|37;1|307;0|86;0|135;0|454;2|233;2|503;2|12;2|61;2|331;0|110;0|159;0|208;0|478;1|257;0|306;0|85;0|134;0|453;2|232;2|502;2|11;2|281;0|60;0|330;0|109;2|158;0|207;0|477;1|256;0|35;0|84;0|133;0|182;2|452;0|231;2|501;0|10;2|280;2|59;2|329;0|108;0|157;0|206;0|476;2|255;0|34;0|304;0|83;0|132;0|181;0|451;0|230;2|500;2|9;2|279;1|328;0|107;2|156;0|205;0|254;0|33;2|303;0|82;0|131;0|180;0|450;0|229;0|499;2|8;2|278;0|57;2|327;0|106;2|155;0|204;0|474;0|253;2|32;2|302;0|81;1|130;0|179;2|449;0|228;0|498;0|7;2|277;2|56;1|326;0|105;2|154;0|203;0|473;0|252;0|31;2|301;0|80;1|129;0|178;0|448;0|227;0|497;0|6;2|276;2|55;2|325;0|153;0|202;0|472;2|251;0|30;0|300;0|79;1|128;0|177;0|447;0|226;0|496;0|5;2|275;2|54;0|324;0|103;2|152;2|201;0|471;2|250;0|29;2|299;0|78;0|127;0|446;0|225;0|495;0|4;2|274;0|53;2|323;0|102;2|151;0|200;0|470;0|249;0|28;2|298;0|77;0|126;0|175;0|445;0|224;0|494;0|3;2|273;0|322;0|101;0|150;0|469;2|248;0|27;2|297;0|76;1|125;0|174;0|444;0|223;0|493;0|2;2|272;0|51;1|321;0|100;0|149;0|468;1|247;0|26;0|296;0|75;2|124;0|173;0|443;0|222;0|492;2|1;2|271;0|50;1|320;0|99;0|148;0|467;2|246;0|25;2|295;0|74;1|123;2|442;0|221;0|491;0|0;0");
                         prmClient.send($"SLo+\0{CreateSpellsPacket(prmClient)}\0AR6bk\0Ow{character.pods}|{character.podsMax}\0FO-\0Im189\0Im0152;2021~05~10~11~32~***.***.***.91\0Im0153;***.***.***.91\0");
                         prmClient.send($"GCK|1|{prmClient.account.character.speudo}");
-                        prmClient.send(createAsPacket(prmClient) + "\0ILS2000");
+                        prmClient.send(createAsPacket(prmClient.account.character) + "\0ILS2000");
                         MapGestion.SetCharacterInMap(prmClient);
                         prmClient.send("BT1620646624846\0fC0\0");
                     }
@@ -184,44 +193,29 @@ namespace LeafEmu.World.Game.Character
         }
 
 
-        /// <summary>
-        /// Inventer
-        /// </summary>
-        /// <param name="character"></param>
-        /// <returns></returns>
-        public static string CreateASKPacket(Game.Entity.Character character)
+       public static string CreateSpellsPacket(listenClient prmClient)
         {
-            StringBuilder selectPacket = new StringBuilder("ASK|");
-            selectPacket.Append(character.id).Append("|").Append(character.speudo).Append("|").Append(character.level).Append("|")
-                .Append(character.classe).Append("|").Append(character.gfxID).Append("|").Append(character.couleur1.ToString("x"))
-                .Append("|").Append(character.couleur2.ToString("x")).Append("|").Append(character.couleur3.ToString("x")).Append("||");
-            character.Invertaire.Stuff.ForEach(x => selectPacket.Append(x.DisplayItem + ";"));
-            selectPacket.Append("|");
-            return selectPacket.ToString();
-        }
-
-        public static string CreateSpellsPacket(listenClient prmClient)
-        {
-            return ($"SL{Spells.SpellsManagement.CreatesSpellsPacket(prmClient.account.character.Spells)}\0eL7667711");
+            return ($"SL{Spells.SpellsManagement.CreatesSpellsPacket(prmClient.account.character.Spells)}");
         }
         [PacketAttribute("ALf")]
         public void CancelCreateCharacter(Network.listenClient prmClient, string prmPacket)
         {
-
-            send_character(prmClient);
+            prmClient.send(Get_Packet_character(prmClient));
         }
 
-        private string send_character(listenClient prmClient)
+
+
+        private string Get_Packet_character(listenClient prmClient)
         {
-            string packet = "";
+            string packet = string.Empty;
             foreach (Game.Entity.Character charac in prmClient.account.ListCharacter)
             {
-                packet += $"|{charac.id};{charac.speudo};{charac.level};{charac.gfxID};" +
-                $"{charac.couleur1.ToString("x")};{charac.couleur2.ToString("x")};{charac.couleur3.ToString("x")};null,null,null,null,null,1;0;{World.WorldConfig.ServerID};{charac.isDead};;200";
+                packet += $"|{charac.id};{charac.speudo};{charac.level};{charac.gfxID};-1;-1;-1;,,,,;{charac.isDead};{World.WorldConfig.ServerID};;;";
+                //{ charac.couleur3.ToString("x")}
 
             }
-            return $"ALK0|{prmClient.account.ListCharacter.Count}{packet}";
+            packet = $"ALK1{prmClient.account.ID}|{prmClient.account.ListCharacter.Count}{packet}";
+            return packet;
         }
-
     }
 }

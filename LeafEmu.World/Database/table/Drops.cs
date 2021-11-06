@@ -56,9 +56,15 @@ namespace LeafEmu.World.Database.table
                         if (!Item.model_item.AllItems.ContainsKey(idItem))
                             continue;
                         Game.Item.Item currItem = Item.model_item.AllItems[idItem];
-                        currItem.ActionDrops = (string)dr["action"];
+                        var actionSplit = dr["action"].ToString().Split(':');
+                        currItem.ActionDrops = int.Parse(actionSplit[0]);
                         currItem.ceil = (UInt16)dr["ceil"];
                         currItem.levelDrops = (int)dr["Level"];
+                        if (actionSplit.Length > 1)
+                        {
+                            currItem.ConditionDrops = actionSplit[1];
+                        }
+                        currItem.ConditionDrops = dr["action"].ToString().Split(':')[0];
                         currItem.PercentDropeByGrade = new Decimal[5] { (Decimal)dr["percentGrade1"], (Decimal)dr["percentGrade2"], (Decimal)dr["percentGrade3"],
                                                                       (Decimal)dr["percentGrade4"], (Decimal)dr["percentGrade5"]};
 

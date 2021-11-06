@@ -15,6 +15,7 @@ namespace LeafEmu.World.Database.table.Character
            @"CREATE TABLE IF NOT EXISTS `characterSpells` (
           `characterID` int(11) NOT NULL,
           `level` int(11) NOT NULL,
+          `pos` int(11) NOT NULL,
           `id` int(11) NOT NULL)", conn);
 
             Create_table.ExecuteNonQuery();
@@ -24,9 +25,7 @@ namespace LeafEmu.World.Database.table.Character
         {
             foreach (Game.Entity.Character character in prmClient.account.ListCharacter)
             {
-                string r = "SELECT id, level from characterSpells where characterID='" + character.id + "'";
-
-
+                string r = "SELECT id, level, pos from characterSpells where characterID='" + character.id + "'";
                 using (MySqlCommand commande = new MySqlCommand(r, conn))
                 {
                     MySqlDataReader Reader = commande.ExecuteReader();
@@ -34,8 +33,7 @@ namespace LeafEmu.World.Database.table.Character
                     {
                         while (Reader.Read())
                         {
-                            character.Spells.Add(new Game.Spells.SpellsEntity((int)Reader["id"], (int)Reader["level"]));
-
+                            character.Spells.Add(new Game.Spells.SpellsEntity((int)Reader["id"], (int)Reader["level"], (int)Reader["pos"]));
                         }
                     }
                     Reader.Close();

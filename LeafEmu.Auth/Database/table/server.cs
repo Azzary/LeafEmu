@@ -11,7 +11,7 @@ namespace LeafEmu.Auth.Database.table
         public server(MySqlConnection _conn)
         {
             conn = _conn;
-            conn_world = DataBase.GetMySqlConnection.GetWorldMySqlConnection();
+            conn_world = StaticDataBase.GetMySqlConnection.GetWorldMySqlConnection();
             conn_world.Open();
             MySqlCommand Create_table = new MySqlCommand(@"
                     CREATE TABLE IF NOT EXISTS `server` 

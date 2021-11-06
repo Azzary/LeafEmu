@@ -11,7 +11,7 @@ namespace LeafEmu.World.Game.Fight
         [PacketAttribute("GA900")]
         public void RequetDuel(Network.listenClient prmClient, string prmPacket)
         {
-            if (!(prmClient.account.character.State == EnumClientState.None) || prmClient.account.character.Map.PosFight == "")
+            if (!(prmClient.account.character.State == EnumClientState.None) || prmClient.account.character.Map.PosFight == string.Empty)
             {
                 return;
             }
@@ -72,9 +72,8 @@ namespace LeafEmu.World.Game.Fight
             string packet = $"GA;901;";
             ennemie.send($"{packet}{ennemie.account.character.id};{prmClient.account.character.id}");
             prmClient.send($"{packet}{ennemie.account.character.id};{prmClient.account.character.id}");
-
-            LauchDuel(prmClient, ennemie);
-
+            GestionFight.LauchFight(prmClient, ennemie, FightTypeEnum.Challenge);
+            //LauchDuel(prmClient, ennemie);
         }
 
 

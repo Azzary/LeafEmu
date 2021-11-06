@@ -46,7 +46,7 @@ namespace LeafEmu.World.Game.Character
             prmClient.account.character.resCaract();
             prmClient.send("ILF0");
             prmClient.send("ILF0\0ILS2000");
-            prmClient.send(GestionCharacter.createAsPacket(prmClient));
+            prmClient.send(GestionCharacter.createAsPacket(prmClient.account.character));
             //}
             //else
             //return;

@@ -53,8 +53,11 @@ namespace LeafEmu.World.Game.Fight
             return equipeID == entity.FightInfo.equipeID;
         }
 
-        public void AddDrop(int itemID)
+        public void AddDrop(int itemID, int quantity)
         {
+            if (quantity == 0)
+                return;
+
             if (this.Drops.ContainsKey(itemID))
             {
                 this.Drops[itemID]++;
@@ -110,7 +113,7 @@ namespace LeafEmu.World.Game.Fight
         {
             foreach (var drop in this.Drops)
             {
-                PrmClient.account.character.Invertaire.GenerateItemInInv(PrmClient, drop.Key);
+                PrmClient.account.character.Inventaire.GenerateItemInInv(PrmClient, drop.Key, drop.Value, false);
             }
         }
     }

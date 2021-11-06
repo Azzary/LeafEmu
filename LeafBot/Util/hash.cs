@@ -66,7 +66,7 @@ public class Hash
         throw new IndexOutOfRangeException(ch + " is not in the hash table.");
     }
 
-    public static string Get_Cell_Char(short cellID) => caracteres_array[cellID / 64] + "" + caracteres_array[cellID % 64];
+    public static string Get_Cell_Char(short cellID) => caracteres_array[cellID / 64] + string.Empty + caracteres_array[cellID % 64];
 
     public static short Get_Cell_From_Hash(string cellHash)
     {

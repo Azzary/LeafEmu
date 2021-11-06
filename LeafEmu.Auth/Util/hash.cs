@@ -69,7 +69,7 @@ namespace LeafEmu.Auth.Util
                     {
                         var a = (char)(i + 48);
                         var b = (char)(o + 48);
-                        cryptedIP.Append(a + "" + b);
+                        cryptedIP.Append(a + string.Empty + b);
                         i = 0;
                         o = 0;
                         count++;

@@ -102,10 +102,10 @@
             movement = (CellData[2] & 56) >> 3;
         }
 
-        public bool IsWalkable()
-        {
-            return isWalkable || TriggerCell;
-        }
+        public bool IsWalkable => isWalkable;//|| TriggerCell;
+        
+            
+        
 
         public object Type(int _id = -1)
         {

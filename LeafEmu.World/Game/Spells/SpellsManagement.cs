@@ -8,6 +8,27 @@ namespace LeafEmu.World.Game.Spells
 {
     class SpellsManagement
     {
+        
+
+        [PacketAttribute("SM")]
+        public void moveSpell(Network.listenClient prmClient, string prmPacket)
+        {
+            var data = prmPacket.Substring(2).Split("|");
+            //102|2
+            if (int.TryParse(data[0], out int SpellsID) && int.TryParse(data[1], out int pos))
+            {
+                foreach (SpellsEntity Spells in prmClient.account.character.Spells)
+                {
+                    if (Spells.id == SpellsID)
+                    {
+                        Spells.pos = pos;
+                        continue;
+                    }
+                }
+                prmClient.send(Character.GestionCharacter.CreateSpellsPacket(prmClient));
+            }
+        }
+
         [PacketAttribute("SB")]
         public void UpSpells(Network.listenClient prmClient, string prmPacket)
         {
@@ -15,12 +36,11 @@ namespace LeafEmu.World.Game.Spells
             {
                 foreach (SpellsEntity Spells in prmClient.account.character.Spells)
                 {
-
                     if (Spells.id == SpellsID)
                     {
                         if (prmClient.account.character.PSorts < Spells.level || Spells.level == 6)
                             return;
-                        Game.Entity.Character character = prmClient.account.character;
+                        Entity.Character character = prmClient.account.character;
                         character.PSorts -= Spells.level;
                         Spells.level++;
                         prmClient.send($"SUK{Spells.id}~{Spells.level}");
@@ -30,7 +50,6 @@ namespace LeafEmu.World.Game.Spells
                     }
                 }
             }
-
         }
 
         public static string CreatesSpellsPacket(List<SpellsEntity> listSpells)
@@ -43,14 +62,30 @@ namespace LeafEmu.World.Game.Spells
                 packet.Append('~');
                 packet.Append(Spells.level);
                 packet.Append('~');
-                packet.Append(i);
+                packet.Append(Util.GetDirChar(Spells.pos == -1 ? 25 : Spells.pos));
                 packet.Append(';');
                 i++;
             }
             return packet.ToString();
         }
 
-        public static void AddSpells(Game.Entity.Character Character)
+        public static int GetNextPosDispo(Entity.Character Character)
+        {
+            int posDispo = 1;
+            for (int i = 0; i < Character.Spells.Count; i++)
+            {
+                if (Character.Spells[i].pos == posDispo)
+                {
+                    posDispo++;
+                    i = -1;
+                }
+                if (posDispo > 25)
+                    return 0;
+            }
+            return posDispo;
+        }
+
+        public static void AddSpells(Entity.Character Character)
         {
             byte breed = Character.classe;
             int level = Character.level;
@@ -618,10 +653,10 @@ namespace LeafEmu.World.Game.Spells
                 {
                     entity.CurrentFight.StopTurn.Cancel();
                 }
-                entity.CurrentFight.SendToAllFight($"GA;305;{entity.id}");
+                entity.CurrentFight.SendToAllFight($"GA;305;{entity.ID_InFight}");
                 return;
             }
-            entity.CurrentFight.SendToAllFight("GAS" + entity.id + $"\0GA;300;{entity.id};" +
+            entity.CurrentFight.SendToAllFight("GAS" + entity.ID_InFight + $"\0GA;300;{entity.ID_InFight};" +
                 $"{StatsSpells.SpellsID},{cellsSpellsTarget},0,1,0,0,1");
 
             List<Map.Cell.Cell> cellsTargets = Pathfinding.Pathfinding.getCellListFromAreaString(entity, cellsSpellsTarget, entity.FightInfo.FightCell, StatsSpells.porteeType, 0, false);
@@ -631,7 +666,7 @@ namespace LeafEmu.World.Game.Spells
             List<SpellsEffect.Spells> StatsSpells_Effect = StatsSpells.CCeffects.Count != 0 && Util.rng.Next(1, (int)Math.Floor(chanceCC) + 1) == 1 ?
                                                             StatsSpells.CCeffects : StatsSpells.effects;
             CaracEffect.PA(entity, -StatsSpells.PACost);
-            entity.CurrentFight.SendToAllFight($"GAF0|" + entity.id);
+            entity.CurrentFight.SendToAllFight($"GAF0|" + entity.ID_InFight);
             foreach (SpellsEffect.Spells Spell in StatsSpells_Effect)
             {
                 SpellsEffect.Gestion.EffectGestion.Gestion(entity, Spell, cellsSpellsTarget, cellsTargets);
@@ -659,12 +694,12 @@ namespace LeafEmu.World.Game.Spells
                 if (StatsSpells.minPO <= DistanceCells && MaxPO >= DistanceCells)
                 {
                     //If Spells have LOS and there is a obstacle can't cast Spells 
-                    if (StatsSpells.isEmptyCell && !Launcher.CurrentFight.map.Cells[CellTarget].IsWalkable() || StatsSpells.hasLDV && World.Los.GetLos(Launcher.CurrentFight.map, Launcher.CurrentFight.map.Cells[CellStart], Launcher.CurrentFight.map.Cells[CellTarget], new List<int>()))//!Pathfinding.checkLoS(Launcher.Map, CellStart, CellTarget, Launcher))
+                    if (StatsSpells.isEmptyCell && !Launcher.CurrentFight.map.Cells[CellTarget].IsWalkable || StatsSpells.hasLDV && World.Los.GetLos(Launcher.CurrentFight.map, Launcher.CurrentFight.map.Cells[CellStart], Launcher.CurrentFight.map.Cells[CellTarget], new List<int>()))//!Pathfinding.checkLoS(Launcher.Map, CellStart, CellTarget, Launcher))
                     {
                         msg = $"1171";
                         return false;
                     }
-                    msg = "";
+                    msg = string.Empty;
                     Launcher.PA -= StatsSpells.PACost;
                     return true;
                 }

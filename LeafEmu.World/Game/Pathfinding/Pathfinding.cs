@@ -47,7 +47,7 @@ namespace LeafEmu.World.Game.Pathfinding
 
         public static string convert_astar_path_to_dofus_path(List<int> path, Map.Map map)
         {
-            string le_path = "";
+            string le_path = string.Empty;
             int last_dir = -1;
             int last_cell;
             for (int i = 1; i < path.Count; i++)

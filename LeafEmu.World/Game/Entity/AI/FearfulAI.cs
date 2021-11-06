@@ -7,32 +7,33 @@ namespace LeafEmu.World.Game.Entity.AI
     {
         public FearfulAI(Entity monster) : base(monster) { }
 
-        public override void PlayAI()
+        public async override Task PlayAI()
         {
+            int timeWait = 0;
             try
             {
-                List<int> NextMove = new List<int>();
-                NextMove = MoveUntilCanHit();
-                Move(NextMove);
-                BestSpell();
-                NextMove = MoveFar();
-                Move(NextMove);
+                await Move(MoveUntilCanHit());
+                //timeWait += ;
+                await BestSpell();
+                await Move(MoveFar());
+                //timeWait += ;
             }
             catch (Exception)
             {
             }
+            return;
         }
 
-        public void BestSpell()
+        public async Task BestSpell()
         {
             if (FirstTurn)
             {
-                BoostMe();
                 FirstTurn = false;
+                await BoostMe();
             }
             else
             {
-                AttackNeightboor();
+                 await AttackNeightboor();
             }
         }
 

@@ -105,7 +105,7 @@ namespace LeafEmu.World.Game.Pathfinding
 
             string hash = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
             if (DirNum >= hash.Length)
-                return "";
+                return string.Empty;
             return hash[DirNum].ToString();
 
         }
@@ -266,7 +266,7 @@ namespace LeafEmu.World.Game.Pathfinding
 
         public string RemakePath()
         {
-            string newPath = "";
+            string newPath = string.Empty;
             int newCell = GetCellNum(_strPath.Substring(_strPath.Length - 2, 2));
             int lastCell = _startCell;
             for (int i = 0; i <= _strPath.Length - 1; i += 3)
@@ -497,29 +497,22 @@ namespace LeafEmu.World.Game.Pathfinding
 
             return -1;
         }
-
-        public static List<int> GetAllCellsForThisLinePath(int dir, int baseCell, int remoteCell, Map.Map map)
+        
+        
+        public static List<int> GetAllCellsForThisLinePath(int dir, int baseCell, int remoteCell, Map.Map map, ref int maxCell)
         {
             List<int> cells = new List<int>();
-            if (!InLine(map, baseCell, remoteCell))
-            {
+            if (maxCell <= 0 || !InLine(map, baseCell, remoteCell))
                 return cells;
-            }
-            bool pathFinished = false;
-            int timeOut = 0;
-            while (!pathFinished)
+            var flag = true;
+            while (flag)
             {
                 baseCell = GetCaseIDFromDirection(baseCell, char.Parse(GetDirChar(dir)), map, false);
                 if (baseCell == remoteCell)
-                {
-                    pathFinished = true;
-                }
-                else
-                {
-                    cells.Add(baseCell);
-                }
-                timeOut++;
-                if (timeOut >= 30) break;
+                    flag = false;
+                cells.Add(baseCell);
+                maxCell--;
+                if (maxCell <= 0) break;
             }
             return cells;
         }

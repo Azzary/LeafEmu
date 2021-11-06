@@ -12,12 +12,12 @@ namespace LeafEmu.World.Game.Command.Admin
             string[] InfoTP = command.Split(' ');
             foreach (var item in Database.table.Map.Maps)
             {
-                if (item.Value.X == InfoTP[1] && item.Value.Y == InfoTP[2])
+                if (item.Value.X.ToString() == InfoTP[1] && item.Value.Y.ToString() == InfoTP[2])
                 {
-                    Map.Cell.Cell cellTemp = Database.table.Map.Maps[item.Value.Id].Cells.Find(x => x.IsWalkable());
+                    Map.Cell.Cell cellTemp = Database.table.Map.Maps[item.Value.Id].Cells.Find(x => x.IsWalkable);
                     if (cellTemp != null)
                     {
-                        Map.MapMouvement.SwitchMap(client, item.Value.Id, cellTemp.ID);
+                        Map.Mouvement.MapMouvement.SwitchMap(client, item.Value.Id, cellTemp.ID);
                     }
                     return;
                 }
@@ -35,7 +35,7 @@ namespace LeafEmu.World.Game.Command.Admin
             {
                 if (Database.table.Map.Maps.ContainsKey(MapID))
                 {
-                    Map.Cell.Cell cellTemp = Database.table.Map.Maps[MapID].Cells.Find(x => x.IsWalkable());
+                    Map.Cell.Cell cellTemp = Database.table.Map.Maps[MapID].Cells.Find(x => x.IsWalkable);
                     if (cellTemp == null)
                     {
                         return;
@@ -55,7 +55,7 @@ namespace LeafEmu.World.Game.Command.Admin
                 cellID = TpTo.account.character.cellID;
             }
 
-            Map.MapMouvement.SwitchMap(client, MapID, cellID);
+            Map.Mouvement.MapMouvement.SwitchMap(client, MapID, cellID);
         }
 
 
@@ -65,7 +65,7 @@ namespace LeafEmu.World.Game.Command.Admin
             string speudo = command.Split(' ')[1];
             Network.listenClient TpTo = client.CharacterInWorld.Find(x => x.account.character.speudo == speudo);
             if (TpTo != null)
-                Map.MapMouvement.SwitchMap(TpTo, client.account.character.Map.Id, client.account.character.cellID);
+                Map.Mouvement.MapMouvement.SwitchMap(TpTo, client.account.character.Map.Id, client.account.character.cellID);
         }
     }
 }

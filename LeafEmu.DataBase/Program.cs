@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LeafEmu.DataBase
+namespace LeafEmu.StaticDataBase
 {
     class Program
     {

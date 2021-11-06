@@ -18,7 +18,7 @@ namespace LeafEmu.World.Game.Spells.SpellsEffects.Effect
             if (temp == null)
             {
                 Map.Cell.Cell cell = laucher.CurrentFight.map.Cells[TargetCell];
-                if (cell.IsWalkable())
+                if (cell.IsWalkable)
                 {
                     laucher.FightInfo.FightCell = TargetCell;
                     MouvPlayer(laucher, laucher, laucher.ID_InFight, 4);
@@ -46,7 +46,7 @@ namespace LeafEmu.World.Game.Spells.SpellsEffects.Effect
                 for (i = 0; i < spells.value; i++)
                 {
                     NewCell = Map.Pathfinding.NextCell(laucher.CurrentFight.map, NewCell, dir);
-                    if (!laucher.CurrentFight.map.Cells[NewCell].IsWalkable() || laucher.CurrentFight.PlayerInFight.Exists(x => x.account.character.FightInfo.FightCell == NewCell))
+                    if (!laucher.CurrentFight.map.Cells[NewCell].IsWalkable || laucher.CurrentFight.PlayerInFight.Exists(x => x.account.character.FightInfo.FightCell == NewCell))
                     {
                         break;
                     }

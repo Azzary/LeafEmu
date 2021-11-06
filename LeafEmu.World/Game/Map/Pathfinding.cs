@@ -84,7 +84,7 @@ namespace LeafEmu.World.Game.Map
             var hash = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 
             if (dirNum >= hash.Length)
-                return "";
+                return string.Empty;
 
             return hash[dirNum].ToString();
         }
@@ -219,7 +219,7 @@ namespace LeafEmu.World.Game.Map
 
         public string RemakePath()
         {
-            var newPath = "";
+            var newPath = string.Empty;
             var newCell = GetCellNum(strPath.Substring(strPath.Length - 2, 2));
             var lastCell = startCell;
 

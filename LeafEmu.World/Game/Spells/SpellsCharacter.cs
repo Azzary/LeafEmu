@@ -6,10 +6,11 @@
         public int level;
         public int pos;
 
-        public SpellsEntity(int _id, int _level)
+        public SpellsEntity(int _id, int _level, int pos)
         {
             id = _id;
             level = _level;
+            this.pos = pos;
         }
 
     }

@@ -16,7 +16,7 @@ namespace LeafEmu.World.Game.Command.Player
 
 
             }
-            Prmclient.sendDebugMsg(msg.ToString());
+            Prmclient.SendMessageToPlayer(msg.ToString());
         }
 
     }

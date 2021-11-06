@@ -1,4 +1,5 @@
 ﻿using LeafEmu.World.Game.Command.Gestion;
+using LeafEmu.World.Game.Spells.SpellsEffect;
 using System;
 
 namespace LeafEmu.World.Game.Command.Admin
@@ -33,28 +34,50 @@ namespace LeafEmu.World.Game.Command.Admin
             Prmclient.account.character.CurrentFight.CheckEnd();
         }
 
-        [CommandAttribute(3, "pa", 1, "{Nb} Give pa")]
-        public void AddPa(Network.listenClient Prmclient, string command)
+        [CommandAttribute(3, "send", 1, "{string} packet to send")]
+        public void SendPacket(Network.listenClient Prmclient, string command)
         {
-            string Info = command.Split(' ')[1];
-            if (Int16.TryParse(Info, out short nbPa))
+            if (Prmclient.account.character.FightInfo.InFight == 2)
             {
-                Prmclient.account.character.PA += nbPa;
-                Spells.SpellsEffects.Effect.CaracEffect.PA(Prmclient.account.character, nbPa);
+                Prmclient.account.character.CurrentFight.SendToAllFight(command.Substring(4));
             }
         }
 
-        [CommandAttribute(3, "pm", 1, "{Nb} Give pm")]
-        public void AddPM(Network.listenClient Prmclient, string command)
+        [CommandAttribute(3, "buff", 3, "{str} buff name, {Nb} Give pm, {Nb} nb turn")]
+        public void AddBuff(Network.listenClient Prmclient, string command)
         {
-            string Info = command.Split(' ')[1];
-            if (Int16.TryParse(Info, out short nbPm))
+            if (Prmclient.account.character.FightInfo.InFight == 2)
             {
-                // Prmclient.account.character.PM += nbPm;
-                //Spells.SpellsEffects.Effect.CaracEffect.PM(Prmclient.account.character, nbPm);
-                Spells.SpellsEffect.Spells spells = new Spells.SpellsEffect.Spells(nbPm);
-                Buff.Buff.AddBuff(Prmclient.account.character, Prmclient.account.character, spells, nbPm, "PM");
+                string[] Info = command.Split(' ');
+                if (Int32.TryParse(Info[2], out int boost) && Int32.TryParse(Info[3], out int nbTurn))
+                {
+                    Spells.SpellsEffect.Spells spells = new Spells.SpellsEffect.Spells(nbTurn);
+                    spells.effectID = getEffectBuffIdWithName(Info[1], boost);
+                    if (!Buff.Buff.AddBuff(Prmclient.account.character, Prmclient.account.character, spells, boost, Info[1]))
+                    {
+                        Prmclient.SendMessageToPlayer($"carac {Info[1]} not exist");
+                    }
+                }
             }
+        }
+
+        private int getEffectBuffIdWithName(string name, int boost)
+        {
+            switch (name)
+            {
+                case "PM":
+                    return boost > 0 ? 128 : 169;
+                case "PA":
+                    return boost > 0 ? 111 : 168;
+                default:
+                    break;
+            }
+            foreach (var item in Enum.GetValues(typeof(enumSpellsEffects)))
+            {
+                if (item.ToString().ToLower().Contains(name))
+                    return (int)item;
+            }
+            return 0;
         }
 
     }

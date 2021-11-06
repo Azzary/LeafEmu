@@ -12,7 +12,7 @@ namespace LeafEmu.Auth.Database
 
         public LoadDataBase()
         {
-            conn = DataBase.GetMySqlConnection.GetAuthMySqlConnection();
+            conn = StaticDataBase.GetMySqlConnection.GetAuthMySqlConnection();
             Logger.Logger.Log("Opening Connection Database");
             conn.Open();
             Logger.Logger.Log("load Table:");

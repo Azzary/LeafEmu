@@ -35,7 +35,7 @@ namespace LeafEmu.World
             Logger.Logger.Log(@"$$       |$$       |$$    $$ |$$ |            $$       |$$ | $$ | $$ |$$    $$/ ");
             Logger.Logger.Log(@"$$$$$$$$/  $$$$$$$/  $$$$$$$/ $$/             $$$$$$$$/ $$/  $$/  $$/  $$$$$$/  ");
             Logger.Logger.Log($"Rev {World.WorldConfig.Version} Azzary\0");
-            Logger.Logger.Log("");
+            Logger.Logger.Log(string.Empty);
         }
         public static void RemoveFirst<T1, T2>(LinkedList<T1> list, Predicate<T1> predicate)
         {
@@ -51,6 +51,16 @@ namespace LeafEmu.World
             }
         }
 
+        public static int GetPriceOfZaap(Game.Map.Map startMap, Game.Map.Map targetMap)
+        {
+             return (int)Util.GetDistance2Points(startMap.X, startMap.Y, targetMap.X, targetMap.Y) * 10;
+        }
+
+        public static float GetDistance2Points(float x1, float y1, float x2, float y2)
+        {
+            return (float)Math.Sqrt(Math.Pow((x2 - x1),2) + Math.Pow((y2 - y1), 2));
+        }
+
         public static int getIntByHashedValue(char c)
         {
             for (int a = 0; a < HASH.Count; a++)
@@ -58,10 +68,8 @@ namespace LeafEmu.World
                     return a;
             return -1;
         }
-        public static long GetUnixTime()
-        {
-            return ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
-        }
+        public static long GetUnixTime => ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
+  
 
         public static int getStarAlea()
         {
@@ -144,7 +152,7 @@ namespace LeafEmu.World
             var hash = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 
             if (dirNum >= hash.Length)
-                return "";
+                return string.Empty;
 
             return hash[dirNum].ToString();
         }
@@ -180,7 +188,7 @@ namespace LeafEmu.World
         {
             int char1 = cellId / 64;
             int char2 = cellId % 64;
-            return HASH[char1] + "" + HASH[char2];
+            return HASH[char1] + string.Empty + HASH[char2];
 
         }
 

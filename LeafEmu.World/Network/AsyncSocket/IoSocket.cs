@@ -89,6 +89,38 @@ namespace LeafEmu.World.Network.AsyncSocket
             }
         }
 
+        public class test
+        {
+            public listenClient li;
+            public string packet;
+            public test(listenClient li, string packet)
+            {
+                this.li = li;
+                this.packet = packet;
+            }
+        }
+
+        public Dictionary<int, List<test>> PacketRecvFrame = new Dictionary<int, List<test>>();
+
+        public void AddActionInQueue(listenClient li, string packets)
+        {
+            lock (PacketRecvFrame)
+            {
+                if (li.account.statue <= 0)
+                {
+                    if (!PacketRecvFrame.ContainsKey(-1))
+                        PacketRecvFrame.Add(-1, new List<test>());
+                    PacketRecvFrame[-1].Add(new test(li, packets));
+                }
+                else
+                {
+                    if (!PacketRecvFrame.ContainsKey(li.account.character.mapID))
+                        PacketRecvFrame.Add(li.account.character.mapID, new List<test>());
+                    PacketRecvFrame[li.account.character.mapID].Add(new test(li, packets));
+                }
+            }
+        }
+
         /// <summary>
         /// Receiving Completion Processing Function
         /// </summary>
@@ -110,12 +142,7 @@ namespace LeafEmu.World.Network.AsyncSocket
                         string packets = Encoding.UTF8.GetString(e.Buffer, 0, e.BytesTransferred);
                         listenClient li = WorldServer.SocketTolistenClient[s];
                         li.SocketAsyncEvent = e;
-                        foreach (string packet in packets.Replace("\x0a", string.Empty).Split('\0').Where(x => x != string.Empty))
-                        {
-                            // Logger.Logger.Log(packet);
-                            //packetReceivedEvent?.Invoke(packet);
-                            PacketGestion.PacketGestion.Gestion(li, packet);
-                        }
+                        AddActionInQueue(li, packets);
                     }
                     try
                     {
@@ -216,7 +243,7 @@ namespace LeafEmu.World.Network.AsyncSocket
         private void CloseClientSocket(Socket s, SocketAsyncEventArgs e)
         {
             // The SocketAsyncEventArg object is released and pushed into a reusable queue.
-            WorldServer.removeClient(WorldServer.SocketTolistenClient[s]);
+            WorldServer.RemoveClient(WorldServer.SocketTolistenClient[s]);
             try
             {
                 Interlocked.Decrement(ref this.numConnectedSockets);
@@ -262,8 +289,8 @@ namespace LeafEmu.World.Network.AsyncSocket
 
                     if (ioContext != null)
                     {
-                        listenClient li = new listenClient(s, WorldServer.DataBase, WorldServer.queue,
-                            WorldServer.linkServer, WorldServer.CharacterInWorld);
+                        listenClient li = new listenClient(s, WorldServer.DataBase, WorldServer.Queue,
+                            WorldServer.LinkServer, WorldServer.CharacterInWorld);
                         WorldServer.SocketTolistenClient.Add(s, li);
 
                         ioContext.UserToken = s;

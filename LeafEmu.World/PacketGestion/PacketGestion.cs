@@ -25,7 +25,7 @@ namespace LeafEmu.World.PacketGestion
         }
 
 
-        public static bool Gestion(Network.listenClient client, string packet)
+        public static void Gestion(Network.listenClient client, string packet)
         {
             PacketDatas method = metodos.Find(m => packet.StartsWith(m.name_packet));
 
@@ -34,7 +34,11 @@ namespace LeafEmu.World.PacketGestion
                 if (method != null)
                 {
                     method.information.Invoke(method.instance, new object[2] { client, packet });
-                    return true;
+                    //return true;
+                }
+                else
+                {
+                    Logger.Logger.Debug("No packet: " + packet);
                 }
 
             }
@@ -42,7 +46,8 @@ namespace LeafEmu.World.PacketGestion
             {
                 Logger.Logger.Log(ex);
             }
-            return false;
+            //return false;
+            return;
         }
 
 

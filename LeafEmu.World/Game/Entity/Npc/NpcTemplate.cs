@@ -12,7 +12,7 @@ namespace LeafEmu.World.Game.Entity.Npc
         public string Accessories { get; set; }
         public Dictionary<int, int> InitQuestion { get; }
         public string Vente { get; set; }
-        public string Quest { get; set; }
+        public Quest.Quest Quest { get; set; }
         public string Exchanges { get; set; }
         public string Path { get; set; }
 
@@ -43,7 +43,6 @@ namespace LeafEmu.World.Game.Entity.Npc
                 }
             }
             Vente = _ventes;
-            Quest = _quest;
             Exchanges = _exchanges;
             Path = _path;
             Information = _informations;

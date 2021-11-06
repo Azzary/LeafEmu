@@ -7,7 +7,7 @@ namespace LeafEmu.World.Database.table
 {
     public class Monster
     {
-        public static Dictionary<int, List<Game.Entity.Mob>> Mobs = new Dictionary<int, List<Game.Entity.Mob>>();
+        public readonly static Dictionary<int, List<Game.Entity.Mob>> Mobs = new Dictionary<int, List<Game.Entity.Mob>>();
         MySqlConnection conn;
 
         public Monster(MySqlConnection _conn)

@@ -1,15 +1,20 @@
 ﻿using LeafEmu.World.Game.Fight;
-using System;
-using System.Collections.Generic;
 
 namespace LeafEmu.World.Game.Entity
 {
-    public class Entity : IEquatable<Entity>, IComparable<Entity>
+    public class Entity //: IEquatable<Entity>, IComparable<Entity>
     {
-        public Inventaire.Inventaire Invertaire = new Inventaire.Inventaire();
+        public Inventaire.Inventaire Inventaire = new Inventaire.Inventaire();
         public List<Spells.SpellsEntity> Spells = new List<Spells.SpellsEntity>();
         public Fight.Fight CurrentFight { get; set; }
         public FightEntityInfo FightInfo { get; set; }
+        public Entity ExchangeEntity { get; set; }
+        public short Orientation { get; set; }
+        public Int64 XP { get; set; }
+        public Int64 kamas { get; set; }
+        public int capital { get; set; }
+        public int PSorts { get; set; }
+        public int energie { get; set; }
         public int sexe { get; set; }
         public byte classe { get; set; }
         public string speudo { get; set; }
@@ -43,8 +48,8 @@ namespace LeafEmu.World.Game.Entity
         public int DamagePercentReceived { get; set; }
         public int P_DamagePiege { get; set; }
         public int F_DamagePiege { get; set; }
-        public int BuffPM { get; set; }
-        public int BuffPA { get; set; }
+        public int BuffPM => Buffs.Where(x => x.EffectID == 128 || x.EffectID == 169).Select(x => x.jet).Sum(x => x);
+        public int BuffPA => Buffs.Where(x => x.EffectID == 111 || x.EffectID == 168).Select(x => x.jet).Sum(x => x);
         public int P_RetraitPM { get; set; }
         public int P_RetraitPA { get; set; }
         public int P_EsquivePA { get; set; }
@@ -105,13 +110,24 @@ namespace LeafEmu.World.Game.Entity
         public int P_BoostlResEau { get; set; }
         public int P_BoostResAgi { get; set; }
         public int P_BoostResNeutre { get; set; }
-
+        public int EquipementVie { get; set; }
+        public int EquipementPA { get; set; }
+        public int EquipementPM { get; set; }
+        public int EquipementIntell { get; set; }
+        public int EquipementForce { get; set; }
+        public int EquipementSagesse { get; set; }
+        public int EquipementChance { get; set; }
+        public int EquipementAgi { get; set; }
+        public int EquipementPO { get; set; }
+        public int EquipementDommages { get; set; }
+        public int EquipementDommagesPieges { get; set; }
+        public int EquipementCoupsCritique { get; set; }
+        public int EquipementInitiative { get; set; }
         public int F_EquipementResistanceForce { get; set; }
         public int F_EquipementResistanceIntell { get; set; }
         public int F_EquipementResistanceEau { get; set; }
         public int F_EquipementResistanceAgi { get; set; }
         public int F_EquipementResistanceNeutre { get; set; }
-
         public int F_TotalResForce { get; set; }
         public int F_TotalResIntell { get; set; }
         public int F_TotalResEau { get; set; }
@@ -129,33 +145,33 @@ namespace LeafEmu.World.Game.Entity
         public int EsquivePM { get; set; }
         public bool IsInvocation { get; set; }
 
-        public override int GetHashCode()
-        {
-            return initiative;
-        }
-        public override bool Equals(object obj)
-        {
-            if (obj == null) return false;
-            Entity objAsPart = obj as Entity;
-            if (objAsPart == null) return false;
-            else return Equals(objAsPart);
-        }
+        //public override int GetHashCode()
+        //{
+        //    return initiative;
+        //}
+        //public override bool Equals(object obj)
+        //{
+        //    if (obj == null) return false;
+        //    Entity objAsPart = obj as Entity;
+        //    if (objAsPart == null) return false;
+        //    else return Equals(objAsPart);
+        //}
 
-        public bool Equals(Entity other)
-        {
-            if (other == null) return false;
-            return (this.initiative.Equals(other.initiative));
-        }
+        //public bool Equals(Entity other)
+        //{
+        //    if (other == null) return false;
+        //    return (this.initiative.Equals(other.initiative));
+        //}
 
-        public int CompareTo(Entity comparePart)
-        {
-            // A null value means that this object is greater.
-            if (comparePart == null)
-                return 1;
+        //public int CompareTo(Entity comparePart)
+        //{
+        //    // A null value means that this object is greater.
+        //    if (comparePart == null)
+        //        return 1;
 
-            else
-                return this.initiative.CompareTo(comparePart.initiative);
-        }
+        //    else
+        //        return this.initiative.CompareTo(comparePart.initiative);
+        //}
 
         public Entity()
         {

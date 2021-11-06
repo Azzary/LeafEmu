@@ -140,7 +140,13 @@ namespace LeafEmu.World.Game.Pathfinding
             var tmpCell = Pathfinding.GetJoinCell(cell.cell.ID, Map, fightPath);
             foreach (var c in tmpCell)
             {
-                if (cell.cell.IsWalkable() && !dyn.Contains(c)) { neigh.Add(this.GetCell(c)); }
+                cell = this.GetCell(c);
+                if (cell != null 
+                && (cell.cell.IsWalkable || Map.CellForceEnable.Contains(cell.cell.ID)) 
+                && !dyn.Contains(c) && !Map.CellForceDisable.Contains(cell.cell.ID))
+                {
+                    neigh.Add(cell);
+                }
             }
             return neigh;
         }

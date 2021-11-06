@@ -8,11 +8,13 @@ namespace LeafEmu.World.Database
         public table.Character.Character tablecharacter;
         public table.Spells tableSpells;
         public table.Map tablemap;
+        public table.Zaap tableZaap;
         public table.Monster tableMonster;
         public table.Experience experience;
         public table.Item.model_item model_item;
         public table.Drops TableDrops;
         public table.Npc tableNpc;
+        public table.Quest tableQuests;
         public table.Donjons tableDonjons;
         public table.Item.items_personnage tableCharacterItems;
         public table.Character.CharacterSpells tableCharacterSpells;
@@ -20,7 +22,7 @@ namespace LeafEmu.World.Database
         private static int UIDItem = 1;
         public LoadDataBase()
         {
-            MySqlConnection conn = LeafEmu.DataBase.GetMySqlConnection.GetWorldMySqlConnection();
+            MySqlConnection conn = LeafEmu.StaticDataBase.GetMySqlConnection.GetWorldMySqlConnection();
             conn.Open();
             Logger.Logger.Log("load Table:");
             Logger.Logger.Log("Character...", 10);
@@ -33,8 +35,12 @@ namespace LeafEmu.World.Database
             tableMonster = new table.Monster(conn);
             Logger.Logger.Log("Map...", 10);
             tablemap = new table.Map(conn);
+            Logger.Logger.Log("Zaap...", 10);
+            tableZaap = new table.Zaap(conn);
             Logger.Logger.Log("Npc...", 10);
             tableNpc = new table.Npc(conn);
+            Logger.Logger.Log("Quests...", 10);
+            tableQuests = new table.Quest(conn);
             Logger.Logger.Log("Donjons...", 10);
             tableDonjons = new table.Donjons(conn);
             Logger.Logger.Log("Items...", 10);

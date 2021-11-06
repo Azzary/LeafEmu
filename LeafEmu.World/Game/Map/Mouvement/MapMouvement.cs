@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace LeafEmu.World.Game.Map
+namespace LeafEmu.World.Game.Map.Mouvement
 {
 
 
@@ -15,101 +15,73 @@ namespace LeafEmu.World.Game.Map
         public static double[] WALK_SPEEDS = { 0.75, 0.5, 0.5 };
         public static double[] RUN_SPEEDS = { 0.3, 0.2, 0.2 };
         //public static double[] MOUNT_SPEEDS = { 2.300000E-001, 2.000000E-001, 2.000000E-001, 2.000000E-001, 2.300000E-001, 2.000000E-001, 2.000000E-001, 2.000000E-001 };
-        int[] ListDir = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+        static int[] ListDir = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
         List<int> ListDirFight = new List<int> { 1, 3, 5, 7 };
 
-        [PacketAttribute("GA001")]
-        public void ConfirmMove(Network.listenClient prmClient, string prmPacket)
+        public static List<int> GetPathBetwennToCell(Map map, int cellStart, int cellTarget, List<int> obstacle, bool isFight = false)
         {
-
-            if (DateTimeOffset.Now.ToUnixTimeSeconds() < prmClient.account.character.WaitMoving || prmClient.account.character.FightInfo.InFight != 0 && !prmClient.account.character.FightInfo.YourTurn)
-            {
-                return;
-            }
-            prmPacket = prmPacket.Substring(5).Split('\0')[0];
-            if (!prmClient.account.character.FightInfo.YourTurn && prmClient.account.character.FightInfo.InFight == 2 || !(prmClient.account.character.State == EnumClientState.None) && prmClient.account.character.FightInfo.InFight != 2
-                || prmClient.account.character.FightInfo.InFight == 2 && prmPacket.Length / 3 > prmClient.account.character.TotalPM)
-            {
-                return;
-            }
-            int Cell = prmClient.account.character.FightInfo.InFight != 2 ?
-            prmClient.account.character.cellID:
-            prmClient.account.character.FightInfo.FightCell;
-            List<int> ListCell = new List<int>();
-            Map map = prmClient.account.character.Map;
-            var pathEngine = new Game.Pathfinding.PathfindingV2(map, prmClient.account.character.FightInfo.InFight == 2);
-            var path = pathEngine.FindShortestPath(Cell, Util.CharToCell(prmPacket.Substring(prmPacket.Length - 2, 2)), new List<int>());
-            if (path.Count == 0)
-                return;
+            List<int> ListCell = new List<int>() { cellStart };
+            var pathEngine = new Game.Pathfinding.PathfindingV2(map, isFight);
+            var path = pathEngine.FindShortestPath(cellStart, cellTarget, obstacle);
             path.ForEach(x => ListCell.Add(x.cell.ID));
-            string remakePath = Game.Pathfinding.Pathfinding.CreateStringPath(Cell, 1, ListCell, map);
-            Game.Pathfinding.PathfindingUtil pathfinding = new Game.Pathfinding.PathfindingUtil(remakePath, map, Cell, 0);
-            string chemain = pathfinding.GetStartPath + pathfinding.RemakePath();
-            List<listenClient> CharactersOnMap;
-            if (prmClient.account.character.FightInfo.InFight == 2)
+
+            if (map.HaveZaap && ListCell[ListCell.Count - 1] == Database.table.Zaap.zaaps[map.Id].CellZaap)
+                ListCell.RemoveAt(ListCell.Count - 1);
+            if (map.HaveZaapi && ListCell[ListCell.Count - 1] == Database.table.Zaap.zaapis[map.Id].CellZaapi)
+                ListCell.RemoveAt(ListCell.Count - 1);
+            return ListCell;
+        }
+
+
+        public static bool CanMove(listenClient prmClient)
+        {
+            return (prmClient.account.character.State == EnumClientState.None || prmClient.account.character.State == EnumClientState.OnSwithMove)
+                && prmClient.account.character.FightInfo.InFight == 0
+                && (DateTimeOffset.Now.ToUnixTimeSeconds() > prmClient.account.character.WaitMoving || prmClient.account.character.State == EnumClientState.OnSwithMove);
+        }
+
+        [PacketAttribute("GA001")]
+        public void ConfirmMove(listenClient prmClient, string prmPacket)
+        {
+            var character = prmClient.account.character;
+            Map map = prmClient.account.character.Map;
+            prmClient.account.character.UseInteractifAtEndOfMove = -1;
+            Logger.Logger.Log(map.CharactersOnMap.Count);
+            prmPacket = prmPacket.Substring(5).Split('\0')[0];
+            if (!CanMove(prmClient) && !FightMouvement.CanMouvInFight(prmClient, prmPacket))
+                return;
+            
+            int startCell = character.FightInfo.InFight != 2 ? character.cellID : character.FightInfo.FightCell;
+            var targetCell = Util.CharToCell(prmPacket.Substring(prmPacket.Length - 2, 2));
+            List<int> ListCell = character.FightInfo.InFight == 2 ? FightMouvement.mouvInFight(prmClient, prmPacket) :
+                                                                    GetPathBetwennToCell(map, startCell, targetCell, new List<int>());
+            if (ListCell.Count == 0 || ListCell.Count == 1 && startCell == ListCell[0])
             {
-                if (ListCell.Count > prmClient.account.character.PM)
-                    return;
-                for (int i = 0; i < ListCell.Count; i++)
-                {
-                    var traps = prmClient.account.character.CurrentFight.glyphAndTrapsOnMap.FindAll(x => x.IsTrap && x.ListCell.Contains(ListCell[i]));
-                    if (traps.Count != 0)
-                    {
-                        ListCell.RemoveRange(i, ListCell.Count - i);
-                        foreach (var trap in traps)
-                        {
-                            trap.ActionGliphEntity(prmClient.account.character);
-                            trap.Remove();
-                        }
-                        break;
-                    }
-                }
-
-                foreach (var item in prmClient.account.character.CurrentFight.glyphAndTrapsOnMap)
-                {
-                    if (item.IsTrap)
-                    {
-                        foreach (int cell in item.ListCell)
-                        {
-                            if (true)
-                            {
-
-                            }
-                        }
-                    }
-                }
-                
-                chemain = ($"GA0;1;{prmClient.account.character.id};b{Util.CellToChar(prmClient.account.character.FightInfo.FightCell)}{chemain}");
-                prmClient.account.character.PM -= ListCell.Count;
-                prmClient.account.character.FightInfo.FightCell = Util.CharToCell(chemain.Substring(chemain.Length - 2));
-                chemain += $"\0GA;129;{prmClient.account.character.id};{prmClient.account.character.id},-{ListCell.Count}";
-                CharactersOnMap = prmClient.account.character.CurrentFight.PlayerInFight;
-
+                prmClient.send("GA;0");
+                return;
             }
-            else
-            {
-                chemain = ($"GA0;1;{prmClient.account.character.id};{chemain}");
-                CharactersOnMap = map.CharactersOnMap;
-                prmClient.account.character.cellID = Util.CharToCell(chemain.Substring(chemain.Length - 2));
-                prmClient.account.character.WaitMoving = DateTimeOffset.Now.ToUnixTimeSeconds() + timing(ListCell, map);
-            }
+            string chemain = ($"GA0;1;{prmClient.account.character.id};{getStringPath(startCell, ListCell, map)}"); 
+            prmClient.account.character.ChangeCell(ListCell[ListCell.Count - 1]);
+            prmClient.account.character.WaitMoving = DateTimeOffset.Now.ToUnixTimeSeconds() + timing(ListCell, map);
             prmClient.account.character.ListCellMove = ListCell;
             prmClient.account.character.State = EnumClientState.OnMove;
-            lock (CharactersOnMap)
-            {
-                for (int i = 0; i < CharactersOnMap.Count; i++)
-                {
-                    CharactersOnMap[i].send(chemain);
-                }
-            }
 
-
+            if (character.FightInfo.InFight == 2) prmClient.SendToAllFight(chemain); else prmClient.SendToAllMap(chemain);
         }
+
+
+        public static string getStringPath(int startCell, List<int> ListCell, Map map)
+        {
+            string remakePath = Game.Pathfinding.Pathfinding.CreateStringPath(startCell, 1, ListCell, map);
+            Game.Pathfinding.PathfindingUtil pathfinding = new Game.Pathfinding.PathfindingUtil(remakePath, map, startCell, 0);
+            return pathfinding.GetStartPath + pathfinding.RemakePath();
+        }
+
 
         private async void setDoor(Map map, InteractiveDoors interDoors, listenClient PrmClient)
         {
             setState(map, true, interDoors, PrmClient);
-            await Task.Delay(30000);
+            await WorldServer.MethodSleep(30000*100);
             setState(map, false, interDoors, PrmClient);
         }
 
@@ -160,6 +132,11 @@ namespace LeafEmu.World.Game.Map
         [PacketAttribute("GKK0")]
         public void ActionEnd(listenClient prmClient, string prmPacket)
         {
+            if (prmClient.account.character.State == EnumClientState.OnSwithMove)
+            {
+                Logger.Logger.Warning("Is a cheater ????");
+                return;
+            }
             if (prmClient.account.character.FightInfo.InFight != 0 || prmClient.account.character.ListCellMove.Count == 0)
             {
                 if (prmClient.account.character.FightInfo.InFight == 2)
@@ -171,11 +148,12 @@ namespace LeafEmu.World.Game.Map
                 return;
             }
 
-            if (DateTimeOffset.Now.ToUnixTimeSeconds() < prmClient.account.character.WaitMoving)
+            if (DateTimeOffset.Now.ToUnixTimeSeconds() + 5 < prmClient.account.character.WaitMoving)
             {
                 prmClient.account.character.WaitMoving = DateTimeOffset.Now.ToUnixTimeSeconds() + 10000000;
                 return;
             }
+            
             if (prmClient.account.character.Map.CellTp.ContainsKey(prmClient.account.character.cellID))
             {
                 int[] arg = prmClient.account.character.Map.CellTp[prmClient.account.character.cellID];
@@ -207,14 +185,15 @@ namespace LeafEmu.World.Game.Map
                 {
                     List<int> cellid = new List<int>();
                     map.CharactersOnMap.ForEach(x => cellid.Add(x.account.character.cellID));
-                    if (item.RequiedCells.Intersect(cellid).Count() == item.RequiedCells.Count)
+                    if (true || item.RequiedCells.Intersect(cellid).Count() == item.RequiedCells.Count)
                     {
                         setDoor(map, item, prmClient);
                     }
 
                 }
             }
-            prmClient.account.character.State = EnumClientState.None;
+            if (!MapInteraction.DoInteractionInMap(prmClient))
+                prmClient.account.character.State = EnumClientState.None;
             prmClient.account.character.ListCellMove.Clear();
         }
 
@@ -232,34 +211,35 @@ namespace LeafEmu.World.Game.Map
                 prmClient.account.character.cellID = CellID;
                 prmClient.send($"GDM|{NewMap.Id}|{NewMap.CreateTime}|{NewMap.DataKey}");
             }
+            if (Database.table.Zaap.zaaps.ContainsKey(NewMap.Id) && !prmClient.account.character.Zaaps.Contains(NewMap.Id))
+            {
+                prmClient.account.character.Zaaps.Add(NewMap.Id);
+                prmClient.send("Im024");
+            }
+                
         }
 
         [PacketAttribute("GKE0")]
         public void SwitchMoving(Network.listenClient prmClient, string prmPacket)
         {
             prmPacket = prmPacket.Substring(5).Split("\0")[0];
-            if (int.TryParse(prmPacket, out int var))
+            if (int.TryParse(prmPacket, out int CurrentPlayerCell))
             {
-                List<int> pathTemp = prmClient.account.character.ListCellMove;
-                for (int i = 0; i < pathTemp.Count - 1; i++)
+                int indexOfCell = prmClient.account.character.ListCellMove.IndexOf(CurrentPlayerCell);
+                if (indexOfCell != -1)
                 {
-                    if (var == pathTemp[i])
+                    double time = prmClient.account.character.WaitMoving -
+                       timing(prmClient.account.character.ListCellMove.GetRange(0, indexOfCell), prmClient.account.character.Map);
+                    if (DateTimeOffset.Now.ToUnixTimeSeconds() + 5 >= time)
                     {
-                        prmClient.account.character.cellID = pathTemp[i];
-                        if ( DateTimeOffset.Now.ToUnixTimeSeconds() == prmClient.account.character.WaitMoving - timing(pathTemp.GetRange(i, pathTemp.Count -1), prmClient.account.character.Map))
-                        {
-                            prmClient.account.character.WaitMoving = DateTimeOffset.Now.ToUnixTimeSeconds() - 1;
-                            prmClient.account.character.State = EnumClientState.None;
-                            prmClient.account.character.Map.SendToAllMap($"GA0;1;{prmClient.account.character.id};b{Util.CellToChar(prmClient.account.character.cellID)}");
-                            return;
-                        }
+                        prmClient.account.character.cellID = CurrentPlayerCell;
+                        prmClient.account.character.State = EnumClientState.OnSwithMove;               
+                        prmClient.send("BN");
                     }
-
                 }
-
             }
         }
-        private double timing(List<int> path, Map map)
+        public static double timing(List<int> path, Map map)
         {
             double run_time = 0;
             double[] time;
@@ -292,7 +272,7 @@ namespace LeafEmu.World.Game.Map
             return run_time - 1;
         }
 
-        private int find_direction(Map map, int startCell, int endCell)
+        private static int find_direction(Map map, int startCell, int endCell)
         {
             foreach (int dir in ListDir)
             {

@@ -52,7 +52,7 @@ namespace LeafEmu.World.Game.Fight
             bool allReady = !prmClient.account.character.CurrentFight.AllEntityInFight.Exists(x => x.IsHuman && !x.FightInfo.IsReady);
             if (allReady)
             {
-                new Thread(prmClient.account.character.CurrentFight.start).Start();
+                prmClient.account.character.CurrentFight.start();
             }
 
         }
@@ -159,6 +159,9 @@ namespace LeafEmu.World.Game.Fight
                 {
                     case FightTypeEnum.Challenge:
                     case FightTypeEnum.Agression:
+                        var enemie = (listenClient)_enemie;
+                        prmClient.account.character.CurrentFight.PlayerInFight.Add(enemie);
+                        prmClient.account.character.CurrentFight.AllEntityInFight.Add(enemie.account.character);
                         break;
                     case FightTypeEnum.PvM:
                         Entity.MobGroup Mobs = (Entity.MobGroup)_enemie;
@@ -228,8 +231,8 @@ namespace LeafEmu.World.Game.Fight
         {
             StringBuilder packet = new StringBuilder();
             packet.Append("GE");
-            long elapsedTimeFight = Environment.TickCount - 1;
-            packet.Append(elapsedTimeFight + "|" + CurrentFight.FightID + "|" + (CurrentFight.FightType == FightTypeEnum.Agression ? "1" : "0"));
+            long elapsedTimeFight = Util.GetUnixTime - CurrentFight.StartTime;
+            packet.Append(elapsedTimeFight * 1000 + "|" + CurrentFight.FightID + "|" + (CurrentFight.FightType == FightTypeEnum.Agression ? "1" : "0"));
             CurrentFight.GenerateDrops();
             foreach (Entity.Entity infoEntity in CurrentFight.AllEntityInFight)
             {
@@ -246,6 +249,8 @@ namespace LeafEmu.World.Game.Fight
                     #region Challenge
 
                     case FightTypeEnum.Challenge:
+                        if (infoEntity.GetType() != typeof(Entity.Character))
+                            continue;
                         int earnedExperience = 0;
                         int earnedKamas = 0;
                         var playerBis = (Entity.Character)infoEntity;

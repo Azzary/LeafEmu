@@ -1,6 +1,8 @@
 ﻿using LeafEmu.World.Network;
+using LeafEmu.World.World;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +18,7 @@ namespace LeafEmu.World.Game.Fight
         public FightTypeEnum FightType { get; }
         public List<List<Entity.Entity>> Equipe;
         public int nbTour = 0;
+        public readonly long StartTime = Util.GetUnixTime;
         public int Stars { get; set; }
         public int FightID { get; set; }
         public string GTLpacket { get; set; }
@@ -27,6 +30,10 @@ namespace LeafEmu.World.Game.Fight
         private Pathfinding.PathfindingV2 pathfinding;
         public Map.Map map;
         private readonly int TimeTurn = 40000;
+        int pos = -1;
+        Entity.Entity TourEntity;
+        public int ActionToDoAtFrame = 1;
+
         public Fight(List<listenClient> _PlayerInFight, FightTypeEnum _FightType)
         {
             FightStade = 0;
@@ -43,57 +50,127 @@ namespace LeafEmu.World.Game.Fight
         //Don't Remove
         public Fight() { }
 
-        public void start()
+        public async void start()
         {
             FightStade = 1;
             SetOrderFight();
+            SendToAllFight(CreateGTMPacket());
             map.SendToAllMap("Gc-" + PlayerInFight[0].account.character.FightInfo.FightID);
-            Entity.Entity TourEntity = AllEntityInFight[0];
-            int pos = -1;
-            while (FightRuning)
-            {
-                while (FightRuning)
-                {
-                    FightRuning = nbTour < 100;
-                    CheckEnd();
-                    if (!FightRuning)
-                        break;
-                    pos++;
-                    if (pos > AllEntityInFight.Count - 1)
-                    {
-                        pos = 0;
-                        nbTour++;
-                    }
-                    TourEntity = AllEntityInFight[pos];
-                    if (TourEntity.FightInfo.InFight == 2 && !TourEntity.FightInfo.isDead)
-                    {
-                        break;
-                    }
-                }
-                if (!FightRuning)
-                    break;
-
-                string packetGTF = "GTF" + TourEntity.id;
-                string packetGTM = CreateGTMPacket(true);
-                for (int x = 0; x < PlayerInFight.Count; x++)
-                {
-                    PlayerInFight[x].send(packetGTF);
-                    PlayerInFight[x].send(GTLpacket);
-                    PlayerInFight[x].send(packetGTM);
-                    PlayerInFight[x].send($"GTS{TourEntity.ID_InFight}|{TimeTurn}\0");
-                }
-                //GAC\0GA;940\0As...
-                TourEntity.FightInfo.YourTurn = true;
-                //TourEntity.send("GAC\0GA;940\0");// + Character.GestionCharacter.createAsPacket(TourEntity));
-                TourEntity.CurrentFight = this;
-                TurnGestion(TourEntity);
-                GlyphGestion(TourEntity);
-                Buff.Buff.GestionBuff(TourEntity);
-                FightRuning = AllEntityInFight.Count <= 1 ? false : true;
-                TourEntity.UpdateStat();
-            }
+            TourEntity = AllEntityInFight[0];
+            SendToAllFight("BN");
+            await WorldServer.MethodSleep(1000);
+            await PlayTurn();
         }
 
+        private async Task PlayTurn()
+        {
+            SendToAllFight($"{CreateGTMPacket(true)}\0GTS{TourEntity.ID_InFight}|{TimeTurn}");
+            TourEntity.FightInfo.YourTurn = true;
+            TourEntity.CurrentFight = this;
+            if (TourEntity.IsHuman)
+            {
+                StopTurn = new CancellationTokenSource();
+                waitPlayTurn(TimeTurn);
+            }
+            else
+            {
+                if (TourEntity.Vie > 0)
+                {
+                    try
+                    {
+                        await WorldServer.MethodSleep(1000);
+                        Entity.Mob mob = (Entity.Mob)TourEntity;
+                        await mob.AI.PlayAI();
+                        TourEntity.FightInfo.YourTurn = false;
+                        await WorldServer.MethodSleep(500);
+                        addToWorldServerFightList();
+                    }
+                    catch (Exception)
+                    { }
+                }
+                else
+                    TourEntity.FightInfo.isDead = true;
+            }
+            
+        }
+
+        private void waitPlayTurn(int timeWait)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(timeWait, StopTurn.Token);
+                }
+                catch (OperationCanceledException) {}
+                catch {}
+                TourEntity.FightInfo.YourTurn = false;
+                addToWorldServerFightList();
+            });
+        }
+        public async void GestionTurn(Entity.Entity nextEntity = null)
+        {
+            EndTurn();
+            if (TourEntity.GetType() == typeof(Entity.Character))
+                SendToPlayer((Entity.Character)TourEntity, Character.GestionCharacter.createAsPacket((Entity.Character)TourEntity));
+            findNextEntity(nextEntity);
+            await PlayTurn();
+            //don't put code after TurnGestion for thread safe
+        }
+
+        private void addToWorldServerFightList() 
+        {
+            if (!FightRuning)
+                return;
+            ActionToDoAtFrame = ActionToDoAtFrame == 0 ? 1 : 0;
+            if (!WorldServer.Fights.Contains(this))
+                lock (WorldServer.Fights)
+                {
+                    WorldServer.Fights.Add(this);
+                }
+        }
+
+        public void GestionEndTurn()
+        {
+            GlyphGestion(TourEntity);
+            Buff.Buff.GestionBuff(TourEntity);
+            FightRuning = AllEntityInFight.Count <= 1 ? false : true;
+            TourEntity.UpdateStat();
+            addToWorldServerFightList();
+        }
+
+        private void EndTurn()
+        {
+             SendToAllFight($"GTF{TourEntity.ID_InFight}\0GTR{TourEntity.ID_InFight}");
+        }
+
+        private void findNextEntity(Entity.Entity forceNextEntity = null)
+        {
+            if (forceNextEntity != null)
+            {
+                TourEntity = forceNextEntity;
+                return;
+            }
+               
+            while (FightRuning)
+            {
+                FightRuning = nbTour < 100;
+                CheckEnd();
+                if (!FightRuning)
+                    return;
+                pos++;
+                if (pos > AllEntityInFight.Count - 1)
+                {
+                    pos = 0;
+                    nbTour++;
+                }
+                TourEntity = AllEntityInFight[pos];
+                if (TourEntity.FightInfo.InFight == 2 && !TourEntity.FightInfo.isDead)
+                {
+                    break;
+                }
+            }
+        }
         private void GlyphGestion(Entity.Entity TourEntity)
         {
             foreach (var item in glyphAndTrapsOnMap)
@@ -110,60 +187,38 @@ namespace LeafEmu.World.Game.Fight
             glyphAndTrapsOnMap.RemoveAll(x => !x.IsTrap && x.LifeTime == nbTour);
             
         }
-
         private string CreateGTMPacket(bool InFight = false)
         {
-            string GTMpacket = "GTM|";
+            StringBuilder GTMpacket = new StringBuilder("GTM");
             foreach (var entity in AllEntityInFight)
             {
                 if (!entity.FightInfo.isDead)
                 {
-                    GTMpacket += $"{entity.ID_InFight};0;{entity.Vie};{entity.PA};{entity.PM};{entity.FightInfo.FightCell};;{entity.TotalVie};0;0;{entity.P_TotalResNeutre},{entity.P_TotalResForce}," +
-                    $"{entity.P_TotalResIntell},{entity.P_TotalResEau},{entity.P_TotalResAgi},8,0," +
-                    $"|998;0;50;6;3;444;;50;0;0;0,0,0,0,0,0,0,;|";
+                    GTMpacket.Append("|").Append(entity.ID_InFight).Append(";")
+                        .Append("0;")
+                        .Append(entity.Vie).Append(";")
+                        .Append(entity.PA).Append(";")
+                        .Append(entity.PM).Append(";")
+                        .Append(entity.FightInfo.FightCell).Append(";")
+                        .Append(";")
+                        .Append(entity.TotalVie);
                 }
-                //GTM|1257;0;50;6;3;368;;50;0;0;0,0,0,0,0,0,0,|998;0;50;6;3;444;;50;0;0;0,0,0,0,0,0,0,\0
             }
-            return GTMpacket;
+            return GTMpacket.ToString();
         }
 
-        private void TurnGestion(Entity.Entity TourEntity)
+        private void SendToPlayer(Entity.Character character, string packet)
         {
-            if (TourEntity.IsHuman)
+            try
             {
-                StopTurn = new CancellationTokenSource();
-                try
-                {
-                    Task.Delay(TimeTurn).Wait(StopTurn.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    //Fin de Tour tout est normal
-                }
-                catch
-                {
-                    //probleme
-                }
+                PlayerInFight.Find(x => x.account.character == character).send(packet);
             }
-            else
+            catch (Exception)
             {
-                if (TourEntity.Vie > 0)
-                {
-                    try
-                    {
-                        Entity.Mob mob = (Entity.Mob)TourEntity;
-                        mob.AI.PlayAI();
-                    }
-                    catch (Exception)
-                    { }
-                }
-                else
-                    TourEntity.FightInfo.isDead = true;
-            }
-            TourEntity.FightInfo.YourTurn = false;
 
+            }
+           
         }
-
         public void SendToAllFight(string packet, int equipe = -1)
         {
             lock (PlayerInFight)
@@ -177,105 +232,101 @@ namespace LeafEmu.World.Game.Fight
                 }
             }
         }
-
         bool ischeckEnd = false;
 
-        public void CheckEnd()
+
+        public static void SendEndToPlayer(Network.listenClient prmClient)
+        {
+            prmClient.send("GV");
+            prmClient.send($"GCK|1|{prmClient.account.character.speudo}");
+            prmClient.send(Character.GestionCharacter.createAsPacket(prmClient.account.character) + "ILS2000");
+            Map.MapGestion.SetCharacterInMap(prmClient);
+            prmClient.send("BT1633000182959\0fC0");
+        }
+
+        public async void CheckEnd()
         {
             if (ischeckEnd)
+                return;
+
+            ischeckEnd = true;
+            bool endingOfFight = false;
+            foreach (var fighter in AllEntityInFight)
             {
+                if (fighter.Vie <= 0)
+                {
+                    fighter.FightInfo.isDead = true;
+                }
+            }
+            if (Equipe[0].FindAll(x => !x.FightInfo.isDead).Count <= 0)
+            {
+                endingOfFight = true;
+                WinerTeam = Equipe[1];
+                LoosersTeam = Equipe[0];
+            }
+            else if (Equipe[1].FindAll(x => !x.FightInfo.isDead).Count <= 0)
+            {
+                endingOfFight = true;
+                WinerTeam = Equipe[0];
+                LoosersTeam = Equipe[1];
+            }
+            else if (PlayerInFight.Count == 0)
+                endingOfFight = true;
+            if (endingOfFight)
+            {
+                FightRuning = false;
+                await WorldServer.MethodSleep(2500);// Attent la fin de l'animation de mort
+                if (FightStade == 0)
+                    map.SendToAllMap($"Gc-{FightID}", true);
+                map.FightInMap.Remove(this);
+                GestionFight.EndFightResult(this);
+                await WorldServer.MethodSleep(1000);//sinon le client affiche pas bien les resultat du combat
+                foreach (listenClient otherFighter in PlayerInFight)
+                {
+                    if (FightType == FightTypeEnum.Challenge)
+                    {
+                        otherFighter.account.character.Vie = otherFighter.account.character.TotalVie;
+                    }
+                    otherFighter.account.character.FightInfo = new FightEntityInfo(20, -1, true);
+                    otherFighter.account.character.State = EnumClientState.None;
+                    otherFighter.account.character.Buffs.ForEach(x => x.LifeTime = 0);
+                    Buff.Buff.GestionBuff(otherFighter.account.character);
+                    otherFighter.account.character.Buffs.Clear();
+                    otherFighter.account.character.resCaract();
+                }
+                foreach (var player in PlayerInFight)
+                {
+                    SendEndToPlayer(player);
+                    if (FightType == FightTypeEnum.PvM && LoosersTeam.Contains(player.account.character))
+                    {
+                        Map.Mouvement.MapMouvement.SwitchMap(player, player.account.character.MapSpawnPoint, player.account.character.CellSpawnPoint);
+                    }
+                    else if (map.EndFightActions != null
+                        && FightType == FightTypeEnum.PvM
+                        && map.EndFightActions.Action == 0
+                        && WinerTeam.Contains(player.account.character))
+                    {
+                        Map.Mouvement.MapMouvement.SwitchMap(player, map.EndFightActions.map, map.EndFightActions.cell);
+                    }
+                }
+
+                AllEntityInFight.ForEach(x => x.CurrentFight = null);
+                Equipe[0].Clear();
+                Equipe[1].Clear();
+                AllEntityInFight.Clear();
+                PlayerInFight.Clear();
                 return;
             }
-            ischeckEnd = true;
-            lock (this)
-            {
 
-                bool endingOfFight = false;
-                foreach (var fighter in AllEntityInFight)
-                {
-                    if (fighter.Vie <= 0)
-                    {
-                        fighter.FightInfo.isDead = true;
-                    }
-                }
-                if (Equipe[0].FindAll(x => !x.FightInfo.isDead).Count <= 0)
-                {
-                    endingOfFight = true;
-                    WinerTeam = Equipe[1];
-                    LoosersTeam = Equipe[0];
-                }
-                else if (Equipe[1].FindAll(x => !x.FightInfo.isDead).Count <= 0)
-                {
-                    endingOfFight = true;
-                    WinerTeam = Equipe[0];
-                    LoosersTeam = Equipe[1];
-                }
-                else if (PlayerInFight.Count == 0)
-                    endingOfFight = true;
-                if (endingOfFight)
-                {
-                    if (FightStade == 0)
-                    {
-                        map.SendToAllMap($"Gc-{FightID}", true);
-                    }
-                    FightRuning = false;
-                    map.FightInMap.Remove(this);
-                    GestionFight.EndFightResult(this);
-                    Thread.Sleep(1000);
-                    foreach (listenClient otherFighter in PlayerInFight)
-                    {
-                        if (true)//FightType == FightTypeEnum.Challenge)
-                        {
-                            otherFighter.account.character.Vie = otherFighter.account.character.TotalVie;
-                        }
-                        if (otherFighter.account.character.IsHuman)
-                        {
-                            otherFighter.account.character.FightInfo = new FightEntityInfo(20, -1, true);
-                        }
-                        otherFighter.send("GV");
-                        otherFighter.account.character.Buffs.ForEach(x => x.LifeTime = 0);
-                        Buff.Buff.GestionBuff(otherFighter.account.character);
-                        otherFighter.account.character.Buffs.Clear();
-                        otherFighter.account.character.resCaract();
-                        Map.MapGestion.SetCharacterInMap(otherFighter);
-
-                    }
-                    foreach (var player in PlayerInFight)
-                    {
-                        Item.Stuff.RangerItem(ref player.account.character.Invertaire.Stuff);
-                        player.send(Character.GestionCharacter.CreateASKPacket(player.account.character));
-                        if (FightType == FightTypeEnum.PvM && LoosersTeam.Contains(player.account.character))
-                        {
-                            Map.MapMouvement.SwitchMap(player, player.account.character.MapSpawnPoint, player.account.character.CellSpawnPoint);
-                        }
-                        else if (map.EndFightActions != null
-                            && FightType == FightTypeEnum.PvM
-                            && map.EndFightActions.Action == 0
-                            && WinerTeam.Contains(player.account.character))
-                        {
-                            Map.MapMouvement.SwitchMap(player, map.EndFightActions.map, map.EndFightActions.cell);
-                        }
-                    }
-
-                    AllEntityInFight.ForEach(x => x.CurrentFight = null);
-                    Equipe[0].Clear();
-                    Equipe[1].Clear();
-                    AllEntityInFight.Clear();
-                    PlayerInFight.Clear();
-                    return;
-                }
-
-                ischeckEnd = false;
-
-
-            }
+            ischeckEnd = false;
+          
         }
 
         private void SetOrderFight()
         {
             List<Entity.Entity> OrderFither = new List<Entity.Entity>();
-            Equipe[0].Sort();
-            Equipe[1].Sort();
+            Equipe[0].OrderBy(x => x.initiative);
+            Equipe[1].OrderBy(x => x.initiative);
             int idEquipe = Equipe[0][0].initiative > Equipe[1][0].initiative ? 0 : 1;
             int indiceEquipe0 = 0;
             int indiceEquipe1 = 0;
@@ -303,11 +354,11 @@ namespace LeafEmu.World.Game.Fight
             {
                 GICpacket += $"{entity.ID_InFight};{entity.FightInfo.FightCell}|";
             }
-            CreateOrderPacket();
-            SendToAllFight(GICpacket + "\0GS\0" + GTLpacket);
+            CreateOrderPacketGTL();
+            SendToAllFight($"GR{AllEntityInFight[0].ID_InFight}\0" + GICpacket + "\0GS\0" + GTLpacket);
             FightRuning = true;
         }
-        public void CreateOrderPacket()
+        public void CreateOrderPacketGTL()
         {
             GTLpacket = "GTL";
             foreach (Entity.Entity entity in AllEntityInFight)
@@ -321,6 +372,132 @@ namespace LeafEmu.World.Game.Fight
             return Util.rng.Next(0, 100) <= drop.PercentDropeByGrade[Grade];
         }
 
+        private bool CheckDropHunter(Entity.Character character, Item.Item drop)
+        {
+            var weapon = character.Inventaire.getItemByPos(Constant.ITEM_POS_ARME);
+            return (weapon != null && weapon.Effects.Exists(x => x.ID == 795))
+                && character.getMetierByID(41) != null;// && character.getMetierByID(41).get_lvl() >= drop.levelDrops;
+        }
+
+        private int CheckIfPlayerCanDropItem(Entity.Character character, Item.Item drop, int quantity)
+        {
+            bool itsOk = false;
+            bool unique = false;
+            switch (drop.ActionDrops)
+            {
+                case -2:
+                    unique = true;
+                    itsOk = true;
+                    break;
+                case -1:// All items without condition.
+                    itsOk = true;
+                    break;
+
+                case 1:// Is meat so..
+                    itsOk = CheckDropHunter(character, drop);
+                    break;
+
+                case 2:// Verification of the condition (MAP)
+                    foreach (string id in drop.ConditionDrops.Split(','))
+                        if (id.Equals(character.Map.Id.ToString()))
+                            itsOk = true;
+                    break;
+
+                case 3:// Alignement
+                    //if (this.getMapOld().getSubArea() == null)
+                    //    break;
+                    //switch (drop.ConditionDrops)
+                    //{
+                    //    case "0":
+                    //        if (this.getMapOld().getSubArea().getAlignement() == 2)
+                    //            itsOk = true;
+                    //        break;
+                    //    case "1":
+                    //        if (this.getMapOld().getSubArea().getAlignement() == 1)
+                    //            itsOk = true;
+                    //        break;
+                    //    case "2":
+                    //        if (this.getMapOld().getSubArea().getAlignement() == 2)
+                    //            itsOk = true;
+                    //        break;
+                    //    case "3":
+                    //        if (this.getMapOld().getSubArea().getAlignement() == 3)
+                    //            itsOk = true;
+                    //        break;
+                    //    default:
+                    //        itsOk = true;
+                    //        break;
+                    //}
+                    break;
+
+                case 4: // Quete
+                    if (ConditionParser.validConditions(character, "QE=" + drop.ConditionDrops))
+                        itsOk = true;
+                    break;
+
+                case 5: // Dropable une seule fois
+                    if (character == null) break;
+                    if (character.FightInfo.Drops.ContainsKey(drop.ID)) break;
+                    itsOk = true;
+                    break;
+
+                case 6: // Avoir l'objet
+                    int item = int.Parse(drop.ConditionDrops);
+                    if (item == 2039)
+                    {
+                        if (this.map.Id == 7388)
+                        {
+                            if (character.Inventaire.HasItemTemplate(item))
+                                itsOk = true;
+                        }
+                        else
+                            itsOk = false;
+                    }
+                    else if (character.Inventaire.HasItemTemplate(item))
+                        itsOk = true;
+                    break;
+
+                case 7:// Verification of the condition (MAP) mais pas plusieurs fois
+                    if (character.Inventaire.HasItemTemplate(drop.ID, 1))
+                        break;
+                    foreach(string id in drop.ConditionDrops.Split(','))
+                    {
+                        if (id.Equals(this.map.Id.ToString()))
+                        {
+                            itsOk = true;
+                        }
+                    }
+                    break;
+
+                case 8:// Win a specific quantity
+                    string[] split = drop.ConditionDrops.Split(',');
+                    quantity = Util.rng.Next(int.Parse(split[0]), int.Parse(split[1]));
+                    itsOk = true;
+                    break;
+
+                case 9:// Relique minotoror
+                    //if (character != null && Minotoror.isValidMap(player.getCurMap()))
+                    //    itsOk = true;
+                    break;
+
+                case 999:// Drop for collector
+                    itsOk = true;
+                    break;
+
+                default:
+                    itsOk = true;
+                    break;
+            }
+
+            
+
+            if (!itsOk || unique)
+                quantity = 0;
+            
+            return quantity;
+        }
+
+
         public void GenerateDrops()
         {
             var possibleDrops = new Dictionary<int, int>();
@@ -333,7 +510,6 @@ namespace LeafEmu.World.Game.Fight
                 {
                     foreach (var drop in Database.table.Drops.DropsTables[monster.id])
                     {
-
                         if (CanDrop(drop, monster.Grade))
                         {
                             if (possibleDrops.ContainsKey(drop.ID))
@@ -360,7 +536,11 @@ namespace LeafEmu.World.Game.Fight
                     if (winHumanTeam.Count > 0)
                     {
                         var randomFighter = winHumanTeam[Util.rng.Next(0, winHumanTeam.Count)];
-                        randomFighter.FightInfo.AddDrop(loot.Key);
+
+                        randomFighter.FightInfo.AddDrop(loot.Key, CheckIfPlayerCanDropItem(
+                            (Entity.Character)randomFighter, 
+                            Database.table.Item.model_item.AllItems[loot.Key], 
+                            loot.Value));
                     }
                 }
             }
@@ -377,24 +557,17 @@ namespace LeafEmu.World.Game.Fight
         public void QuitBattle(listenClient player, bool loop = false, bool abandon = false)
         {
             SendToAllFight("GM|-" + player.account.character.ID_InFight);
-            if (player.account.character.IsHuman)
+            SendEndToPlayer(player);
+            if (FightType == FightTypeEnum.PvM)
             {
-                if (FightType == FightTypeEnum.PvM)
-                {
-                    GestionFight.RemoveInvo(player.account.character);
-                    player.account.character.Vie = 1;
-                    Map.MapGestion.SetCharacterInMap(player);
-                    PlayerInFight.Remove(player);
-                    AllEntityInFight.Remove(player.account.character);
-                    Map.MapMouvement.SwitchMap(player, player.account.character.MapSpawnPoint, player.account.character.CellSpawnPoint);
-                    player.send("GV");
-                }
+                Map.Mouvement.MapMouvement.SwitchMap(player, player.account.character.MapSpawnPoint, player.account.character.CellSpawnPoint);
             }
+            GestionFight.RemoveInvo(player.account.character);
+            player.account.character.Vie = 1;
+            PlayerInFight.Remove(player);
+            AllEntityInFight.Remove(player.account.character);
             CheckEnd();
             player.account.character.CurrentFight = null;
-
         }
-
-
     }
 }

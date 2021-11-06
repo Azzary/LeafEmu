@@ -37,7 +37,7 @@ namespace LeafEmu.World.Game.Command.Gestion
                     Network.listenClient target = CommandSplit.Length - 2 >= method.MinimalLen ? PrmClient.CharacterInWorld.Find(x => x.account.character.speudo == CommandSplit[method.MinimalLen + 1]) : PrmClient;
                     if (target == null)
                     {
-                        PrmClient.sendDebugMsg($"client {CommandSplit[method.MinimalLen + 1]} is not connected");
+                        PrmClient.SendMessageToPlayer($"client {CommandSplit[method.MinimalLen + 1]} is not connected");
                         return false;
                     }
                     method.information.Invoke(method.instance, new object[2] { target, command });

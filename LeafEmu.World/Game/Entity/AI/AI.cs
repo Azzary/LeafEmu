@@ -1,4 +1,5 @@
 ﻿using LeafEmu.World.Game.Spells;
+using LeafEmu.World.Network;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,17 +15,12 @@ namespace LeafEmu.World.Game.Entity.AI
             monster = mob;
         }
 
-        public virtual void PlayAI()
+        public async virtual Task PlayAI()
         {
-            try
-            {
-                List<int> NextMove = new List<int>();
-                NextMove = MoveNear();
-                Move(NextMove);
-            }
-            catch (Exception)
-            {
-            }
+            List<int> NextMove = new List<int>();
+            NextMove = MoveNear();
+            await Move(NextMove);
+            return;
         }
         public List<int> MoveUntilCanHit()
         {
@@ -60,7 +56,7 @@ namespace LeafEmu.World.Game.Entity.AI
             }
             return moves;
         }
-        public void AttackNeightboor()
+        public async Task AttackNeightboor()
         {
             try
             {
@@ -90,7 +86,7 @@ namespace LeafEmu.World.Game.Entity.AI
                             {
 
                                 SpellsManagement.LaunchSpells(currentSpells, monster, nearestEntity.FightInfo.FightCell);
-                                Thread.Sleep(700);
+                                await WorldServer.MethodSleep(700);
                                 timeout++;
                                 goto reCast;
                             }
@@ -100,18 +96,18 @@ namespace LeafEmu.World.Game.Entity.AI
                     if (timeout > 200)
                         break;
                 }
-
             }
             catch (Exception)
             {
 
             }
+            return;
         }
-        public void Move(List<int> path)
+        public async Task Move(List<int> path)
         {
             if (path == null || path.Count == 0)
             {
-                return;
+                return ;
             }
             Map.Map map = monster.CurrentFight.map;
             string remakePath = Pathfinding.Pathfinding.CreateStringPath(monster.FightInfo.FightCell, 1, path, map);
@@ -122,13 +118,15 @@ namespace LeafEmu.World.Game.Entity.AI
             monster.PM -= path.Count;
             monster.FightInfo.FightCell = path[path.Count - 1];
             monster.CurrentFight.SendToAllFight(chemain);
-            Thread.Sleep(500 * path.Count);
+            await WorldServer.MethodSleep((350 * path.Count));
         }
-        public void BoostMe()
+
+
+        public async Task BoostMe()
         {
             foreach (SpellsEntity ownSpell in monster.Spells)
             {
-                if (Database.table.Spells.SpellsList[ownSpell.id].TypeOfSpell != SpellsEnumType.attaque)
+                if (Database.table.Spells.SpellsList[ownSpell.id].TypeOfSpell == SpellsEnumType.attaque)
                     continue;
                 SpellsStats currentSpells = Database.table.Spells.SpellsList[ownSpell.id].SpellsStats[ownSpell.level - 1];
 
@@ -136,14 +134,19 @@ namespace LeafEmu.World.Game.Entity.AI
                 {
                     if (SpellsManagement.CheckLaunchSpells(monster.FightInfo.FightCell, monster.FightInfo.FightCell,
                             currentSpells, monster, out string msg))
-
                         SpellsManagement.LaunchSpells(currentSpells, monster, monster.FightInfo.FightCell);
-                    Thread.Sleep(500);
+
+                    await WorldServer.MethodSleep(500);
                 }
             }
+            return;
         }
         public List<int> MoveFar()
         {
+            if (monster.PM <= 0)
+            {
+                return null;
+            }
             List<int> moves = new List<int>();
             List<int> closedList = new List<int>();
             Entity nearestEntity = AIUtil.GetNearestFighter(monster);
@@ -172,6 +175,10 @@ namespace LeafEmu.World.Game.Entity.AI
         }
         public List<int> MoveNear(bool far = false)
         {
+            if (monster.PM <= 0)
+            {
+                return null;
+            }
             if (100 * monster.Vie / monster.TotalVie <= 10)
             {
                 return MoveFar();

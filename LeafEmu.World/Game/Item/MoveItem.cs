@@ -1,5 +1,6 @@
 ﻿using LeafEmu.World.PacketGestion;
 using System.Linq;
+using System.Text;
 
 namespace LeafEmu.World.Game.Item
 {
@@ -25,10 +26,10 @@ namespace LeafEmu.World.Game.Item
 
             if (!int.TryParse(Datas[0], out UID))
                 return;
-            if (!prmClient.account.character.Invertaire.Stuff.Any(x => x.UID == UID))
+            if (!prmClient.account.character.Inventaire.Stuffs.Any(x => x.UID == UID))
                 return;
 
-            Stuff item = prmClient.account.character.Invertaire.Stuff.First(x => x.UID == UID);
+            Stuff item = prmClient.account.character.Inventaire.Stuffs.First(x => x.UID == UID);
             if (quantity > 1)
             {
                 return;
@@ -41,56 +42,41 @@ namespace LeafEmu.World.Game.Item
             else if (item.Template.Type <= 20)
             {
 
-                if (prmClient.account.character.Invertaire.Stuff.Any(x => x.Position == pos))
+                if (prmClient.account.character.Inventaire.Stuffs.Any(x => x.Position == pos))
                 {
-                    Stuff lastItem = prmClient.account.character.Invertaire.Stuff.First(x => x.Position == pos);
+                    Stuff lastItem = prmClient.account.character.Inventaire.Stuffs.First(x => x.Position == pos);
                     lastItem.Position = -1;
 
                 }
                 string info = $"{prmPacket}|{pos}\0";
                 item.Position = pos;
             }
-            uptadeStuff(prmClient, prmPacket + "\0");
+            UptadeStuff(prmClient, prmPacket + "\0");
 
         }
 
-        public static void uptadeStuff(Network.listenClient prmClient, string info = "")
+        public static void UptadeStuff(Network.listenClient prmClient, string info = "")
         {
-            string packet = Game.Character.GestionCharacter.CreateStuffPacketOM(prmClient);
+            string packet = prmClient.account.character.Inventaire.CreateStuffPacketOM(prmClient);
             prmClient.send(info + packet);
-            prmClient.send(Game.Character.GestionCharacter.createAsPacket(prmClient));
+            prmClient.send(Game.Character.GestionCharacter.createAsPacket(prmClient.account.character));
             prmClient.account.character.Map.SendToAllMap(GetItemsPos(prmClient.account.character));
         }
 
 
         public static string GetItemsPos(Game.Entity.Entity character, bool InFight = false)
         {
-            var packet = $"Oa" + (InFight ? character.ID_InFight : character.id) + "|";
-            Inventaire.Inventaire inventaire = character.Invertaire;
-            if (inventaire.Stuff.Any(x => x.Position == 1))
-                packet += inventaire.Stuff.First(x => x.Position == 1).Template.ID.ToString("X");
+            var packet = new StringBuilder($"Oa" + (InFight ? character.ID_InFight : character.id) + "|");
+            Inventaire.Inventaire inventaire = character.Inventaire;
+            foreach (var posID in new List<int>() { 1, 6, 7, 8, 15 })
+            {
+                var item = character.Inventaire.getItemByPos(posID);
+                if (item != null)
+                    packet.Append(item.Template.ID.ToString("X"));
+                packet.Append(",");
+            }
 
-            packet += ",";
-
-            if (inventaire.Stuff.Any(x => x.Position == 6))
-                packet += inventaire.Stuff.First(x => x.Position == 6).Template.ID.ToString("X");
-
-            packet += ",";
-
-            if (inventaire.Stuff.Any(x => x.Position == 7))
-                packet += inventaire.Stuff.First(x => x.Position == 7).Template.ID.ToString("X");
-
-            packet += ",";
-
-            if (inventaire.Stuff.Any(x => x.Position == 8))
-                packet += inventaire.Stuff.First(x => x.Position == 8).Template.ID.ToString("X");
-
-            packet += ",";
-
-            if (inventaire.Stuff.Any(x => x.Position == 15))
-                packet += inventaire.Stuff.First(x => x.Position == 15).Template.ID.ToString("X");
-
-            return packet;
+            return packet.ToString();
         }
 
     }

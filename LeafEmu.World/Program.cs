@@ -7,13 +7,13 @@ namespace LeafEmu.World
     {
         static Network.WorldServer WorldServ;
         static Database.LoadDataBase database;
-        static void Main(string[] args)
+
+        private static void Main(string[] args)
         {
             Util.PrintLogoLeafColor();
             database = new Database.LoadDataBase();
 
-
-            //SynMap(database);
+            // SynMap(database);
             PacketGestion.PacketGestion.init();
             Game.Command.Command.init();
             Game.Spells.SpellsEffect.Gestion.EffectGestion.init();
@@ -23,11 +23,11 @@ namespace LeafEmu.World
         public static void SynMap(Database.LoadDataBase database)
         {
             DirectoryInfo d = new DirectoryInfo(@"C:\wamp64\www\dofus\maps");
-            FileInfo[] Files = d.GetFiles("*.swf"); //Getting Text files
-            foreach (FileInfo file in Files)
+            FileInfo[] files = d.GetFiles("*.swf"); // Getting Text files
+            foreach (FileInfo file in files)
             {
 
-                if (Int32.TryParse(file.Name.Split("_")[0], out int res))
+                if (int.TryParse(file.Name.Split("_")[0], out int res))
                 {
 
                     if (Database.table.Map.Maps.ContainsKey(res))
