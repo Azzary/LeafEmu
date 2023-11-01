@@ -1,80 +1,77 @@
-# Emulateur-Dofus-1.29
+# LeafEmu - Émulateur Dofus 1.29
 
+## Introduction
 
-LeafEmu
-========
+LeafEmu est un émulateur open-source pour Dofus Retro, écrit en C#.
+Ce projet n'est plus en développement et représente l'un de mes premiers projets. Par conséquent, le code n'est pas propre et pas optimisé.
 
+## Fonctionnalités
 
+### database
+- mysql mais le code fait peur.
 
-open-sources emulator for Dofus Retro
-He is written in C#
+### Authentification (Auth)
 
+- Connexion au jeu
+- File d'attente
+- Gestion des mots de passe et des bans
+- Affichage des serveurs
+- Affichage du nombre de personnages
+- Connexion au serveur de jeu
 
+### Monde (World)
 
+#### Carte (Map)
+- Affichage des cartes
+- Déplacements sur les cartes
+- Téléportations sur les cartes
+- Gestion des autres personnages sur la carte
+- Affichage des combats sur la carte
+- Gestion des monstre sur la map
+- Gestion des quetes
 
+#### Chat
+- Gestion des différents chats
+- Affichage des messages
 
-## ChangeLog Auth:  
----> Ajout de la connexion  
----> Ajout de fil d'attente  
----> Gestion des MDP/Ban...   
----> Affichage des server  
----> Affichage du nb de personnage  
----> Connection au server de jeu  
+#### Personnage
+- Création / suppression / sélection des personnages
+- Gestion des statistiques (vie, force, intelligence, agilité, sagesse)
+- Carte de départ pour toutes les classes
 
-## ChangeLog World:  
----> Map:  
-------> Ajout des affichages des maps  
-------> Ajout des déplacements sur les maps  
-------> Ajout des téléportations sur les maps  
-------> Gestion des autre personnages sur la map  
-------> Affichage du combat sur la map  
----> Chat:  
-------> Destion des different chats  
-------> Affichage des message  
----> Personnage:  
-------> Ajout des créations / suppressions / sélections personnages  
-------> Ajout des stats (vie, force, intel, agi, sagesse)  
-------> Map de depart pour toute les classes  
----> Items:  
-------> Items dans l'inventaire  
-------> Sauvgarde del'inventaire  
-------> Des/Equiper des items  
-------> Gestion des stats des item  si equiper (pas tout)  
-------> Affichage des equipements sur la map  
-------> Affichage des equipements en combat  
----> Sort:    
-------> Ajout des sorts pour en fonction des classes et du level  
-------> Ajout du up de level des sorts  
----> Caracteristique:  
-------> Gestion des Caracteristique  
-------> Up Carac  
----> Fight:  
-------> Demmande de duel  
-------> Accepter/Refuser un Duel  
-------> Bien afficher l'entre des combat(Sur bonne cell)
-------> Rejoindre un duel
-------> Imposible de se deplacer en demande  
-------> Debut du combat  
-------> Affichage des cells de placement  
-------> Deplacement sur les cells de placement  
-------> Pret/PasPret    
-------> Debut du combat  
-------> Passer sont tour  
-------> Passer sont tour si le temps est atteint  
-------> Gestion des tours  
-------> Deplacement en combat  
-------> Gestion des PM  
-------> Imposible de faire une action si tour == false  
-    
-    
-## To-Do:  
-Verif item type pour l'equiper  
-Utilisation des sorts  
-Gestion la position des Sorts (Ajouter dans la DB)     
-Ajout du Multi-Server(Need 2/3 update)    
-Ajouter Les rez/prospection/Esquive PA - PM    
-pnj  
+#### Objets (Items)
+- Objets dans l'inventaire
+- Sauvegarde de l'inventaire
+- Équipement et déséquipement des objets
+- Gestion des statistiques des objets équipés (partiel)
+- Affichage des équipements sur la carte et en combat
 
+#### Sorts
+- Ajout des sorts en fonction des classes et du niveau
+- Augmentation du niveau des sorts
 
-    
-    
+#### Caractéristiques
+- Gestion des caractéristiques
+- Augmentation des caractéristiques
+
+#### Combat (Fight)
+- Demande de duel
+- Acceptation ou refus d'un duel
+- Gestion de l'entrée en combat
+- Rejoindre un duel
+- Gestion du tour en combat (passer son tour, temps, etc.)
+- Lancement d'un combat contre les mobs
+- Fin de combat (xp,....)
+
+### Sort
+- Gestion de pas mal d'effet
+- Pareil pour les buffs
+
+## To-Do
+
+- Vérification du type d'objet pour l'équipement
+- Utilisation des sorts
+- Gestion de la position des sorts (à ajouter dans la base de données)
+- Ajout du multi-serveur (nécessite 2/3 mises à jour)
+- Ajouter des fonctionnalités pour les PNJ
+
