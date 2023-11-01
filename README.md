@@ -69,8 +69,6 @@ Ce projet n'est plus en développement et représente l'un de mes premiers proje
 
 ## To-Do
 
-- Vérification du type d'objet pour l'équipement
-- Utilisation des sorts
 - Gestion de la position des sorts (à ajouter dans la base de données)
 - Ajout du multi-serveur (nécessite 2/3 mises à jour)
 - Ajouter des fonctionnalités pour les PNJ
